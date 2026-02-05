@@ -104,10 +104,10 @@ export function ScenarioView() {
       <div className="bg-white rounded-lg border border-gray-200 p-3">
         <h3 className="text-xs font-semibold text-gray-600 uppercase mb-2">Cash Flow</h3>
         <BreakdownRow label="Gross Income" value={fmtCurrency(result.gross_monthly)} />
-        <BreakdownRow label="− Taxes" value={fmtCurrency(result.tax.taxes_monthly)} indent />
-        <BreakdownRow label="= Net Pay" value={fmtCurrency(result.net_pay_monthly)} />
         <BreakdownRow label="− Pre-tax Retirement" value={fmtCurrency(result.inputs.pre_tax_retirement_monthly)} indent />
-        <BreakdownRow label="− After-tax Retirement" value={fmtCurrency(result.after_tax_retirement_monthly)} indent />
+        <BreakdownRow label="− Taxes (on reduced income)" value={fmtCurrency(result.tax.taxes_monthly)} indent />
+        <BreakdownRow label="= Take-home Pay" value={fmtCurrency(result.gross_monthly - result.inputs.pre_tax_retirement_monthly - result.tax.taxes_monthly)} />
+        <BreakdownRow label="− After-tax Savings" value={fmtCurrency(result.after_tax_retirement_monthly)} indent />
         <BreakdownRow label="− Living Expenses" value={fmtCurrency(result.living_expenses_monthly)} indent />
         <BreakdownRow label="− Housing" value={fmtCurrency(result.housing.housing_total_monthly)} indent />
         <div className="border-t border-gray-200 mt-1 pt-1">

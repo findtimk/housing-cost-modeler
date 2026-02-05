@@ -102,7 +102,7 @@ export function InputPanel() {
         </button>
       </div>
 
-      <Section title="Savings" hint="Monthly retirement contributions">
+      <Section title="Savings" hint="Retirement & other savings">
         <Field label="Pre-tax Retirement ($/month)">
           <FormattedNumberInput
             value={inputs.pre_tax_retirement_monthly}
@@ -111,7 +111,7 @@ export function InputPanel() {
             min={0}
           />
         </Field>
-        <Field label="After-tax Retirement ($/month)">
+        <Field label="After-tax Savings ($/month)">
           <FormattedNumberInput
             value={inputs.after_tax_retirement_monthly}
             onChange={update('after_tax_retirement_monthly')}
