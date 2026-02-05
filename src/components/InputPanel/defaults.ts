@@ -20,7 +20,7 @@ export const DEFAULT_INPUTS: ScenarioInputs = {
 };
 
 export const DEFAULT_GRID_CONFIG = {
-  income_min: 300_000,
+  income_min: 200_000,
   income_max: 700_000,
   income_step: 50_000,
   price_min: 1_000_000,

@@ -47,8 +47,9 @@ export function GridControls() {
         <GridField label="Step" value={gridConfig.price_step} onChange={update('price_step')} prefix="$" />
       </div>
       <div className="space-y-1">
-        <span className="font-semibold text-gray-700">Threshold</span>
-        <GridField label="Min $" value={gridConfig.surplus_threshold} onChange={update('surplus_threshold')} prefix="$" />
+        <span className="font-semibold text-gray-700">Comfort Buffer</span>
+        <GridField label="Monthly" value={gridConfig.surplus_threshold} onChange={update('surplus_threshold')} prefix="$" />
+        <p className="text-[10px] text-gray-400 max-w-[140px]">Surplus needed to show green</p>
       </div>
     </div>
   );

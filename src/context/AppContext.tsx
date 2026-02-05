@@ -32,6 +32,7 @@ interface AppState {
   auditOpen: boolean;
   mobileTab: MobileTab;
   inputDrawerOpen: boolean;
+  gridConfigOpen: boolean;
 }
 
 interface AppContextValue extends AppState {
@@ -45,6 +46,7 @@ interface AppContextValue extends AppState {
   resetDefaults: () => void;
   setMobileTab: (tab: MobileTab) => void;
   setInputDrawerOpen: (open: boolean) => void;
+  toggleGridConfig: () => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -57,6 +59,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [auditOpen, setAuditOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab>('grid');
   const [inputDrawerOpen, setInputDrawerOpen] = useState(false);
+  const [gridConfigOpen, setGridConfigOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(inputs));
@@ -92,6 +95,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAuditOpen((prev) => !prev);
   }, []);
 
+  const toggleGridConfig = useCallback(() => {
+    setGridConfigOpen((prev) => !prev);
+  }, []);
+
   const resetDefaults = useCallback(() => {
     setInputsState({ ...DEFAULT_INPUTS });
     setGridConfigState({ ...DEFAULT_GRID_CONFIG });
@@ -117,6 +124,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         resetDefaults,
         setMobileTab,
         setInputDrawerOpen,
+        gridConfigOpen,
+        toggleGridConfig,
       }}
     >
       {children}
