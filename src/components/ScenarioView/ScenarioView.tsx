@@ -55,7 +55,7 @@ export function ScenarioView() {
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <KPI
           label="Monthly Surplus"
           value={fmtCurrency(surplus)}
@@ -75,7 +75,7 @@ export function ScenarioView() {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-white rounded-lg border border-gray-200 p-3">
           <h3 className="text-xs font-semibold text-gray-600 uppercase mb-2">Housing Costs</h3>
           <BreakdownRow label="Mortgage P&I" value={fmtCurrency(result.housing.pi_monthly)} indent />

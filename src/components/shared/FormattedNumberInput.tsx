@@ -83,7 +83,7 @@ export function FormattedNumberInput({
         ref={inputRef}
         type="text"
         inputMode="numeric"
-        className={className ?? 'w-full border border-gray-300 rounded px-2 py-1 text-sm'}
+        className={className ?? 'w-full border border-gray-300 rounded px-2 py-2 text-sm min-h-[44px]'}
         value={displayValue}
         onChange={handleChange}
         onFocus={handleFocus}

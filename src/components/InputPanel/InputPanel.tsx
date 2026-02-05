@@ -21,16 +21,16 @@ function Section({
   return (
     <div className="border-b border-gray-200">
       <button
-        className="w-full flex justify-between items-center py-2 px-1 text-left font-semibold text-sm text-gray-700 hover:bg-gray-50"
+        className="w-full flex justify-between items-center py-3 px-1 text-left font-semibold text-sm text-gray-700 hover:bg-gray-50 min-h-[44px]"
         onClick={() => setOpen(!open)}
       >
         <div>
           {title}
           {hint && <span className="text-[10px] text-gray-400 font-normal ml-2">{hint}</span>}
         </div>
-        <span className="text-gray-400">{open ? '−' : '+'}</span>
+        <span className="text-gray-400 text-lg">{open ? '−' : '+'}</span>
       </button>
-      {open && <div className="pb-3 space-y-2">{children}</div>}
+      {open && <div className="pb-3 space-y-3">{children}</div>}
     </div>
   );
 }
@@ -72,7 +72,7 @@ function NumberInput({
       {prefix && <span className="text-gray-500 text-xs">{prefix}</span>}
       <input
         type="number"
-        className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+        className="w-full border border-gray-300 rounded px-2 py-2 text-sm min-h-[44px]"
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         step={step}
@@ -135,7 +135,7 @@ export function InputPanel() {
       <Section title="Tax Settings" hint="Filing status & deductions" defaultOpen={false}>
         <Field label="Filing Status">
           <select
-            className="border border-gray-300 rounded px-2 py-1 text-sm"
+            className="border border-gray-300 rounded px-2 py-2 text-sm min-h-[44px]"
             value={inputs.filing_status}
             onChange={(e) => update('filing_status')(e.target.value as FilingStatus)}
           >
@@ -145,7 +145,7 @@ export function InputPanel() {
         </Field>
         <Field label="State">
           <select
-            className="border border-gray-300 rounded px-2 py-1 text-sm"
+            className="border border-gray-300 rounded px-2 py-2 text-sm min-h-[44px]"
             value={inputs.state}
             onChange={(e) => update('state')(e.target.value)}
           >

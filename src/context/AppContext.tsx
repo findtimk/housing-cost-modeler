@@ -22,6 +22,7 @@ function loadGridConfig(): GridConfig {
 }
 
 type ActiveView = 'grid' | 'scenario';
+type MobileTab = 'inputs' | 'grid' | 'details';
 
 interface AppState {
   inputs: ScenarioInputs;
@@ -29,6 +30,8 @@ interface AppState {
   activeView: ActiveView;
   selectedCell: { income: number; price: number } | null;
   auditOpen: boolean;
+  mobileTab: MobileTab;
+  inputDrawerOpen: boolean;
 }
 
 interface AppContextValue extends AppState {
@@ -40,6 +43,8 @@ interface AppContextValue extends AppState {
   selectCell: (income: number, price: number) => void;
   toggleAudit: () => void;
   resetDefaults: () => void;
+  setMobileTab: (tab: MobileTab) => void;
+  setInputDrawerOpen: (open: boolean) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -50,6 +55,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [activeView, setActiveView] = useState<ActiveView>('grid');
   const [selectedCell, setSelectedCell] = useState<{ income: number; price: number } | null>(null);
   const [auditOpen, setAuditOpen] = useState(false);
+  const [mobileTab, setMobileTab] = useState<MobileTab>('grid');
+  const [inputDrawerOpen, setInputDrawerOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(inputs));
@@ -78,6 +85,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const selectCell = useCallback((income: number, price: number) => {
     setSelectedCell({ income, price });
     setActiveView('scenario');
+    setMobileTab('details');
   }, []);
 
   const toggleAudit = useCallback(() => {
@@ -97,6 +105,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         activeView,
         selectedCell,
         auditOpen,
+        mobileTab,
+        inputDrawerOpen,
         setInputs,
         updateInput,
         setGridConfig,
@@ -105,6 +115,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         selectCell,
         toggleAudit,
         resetDefaults,
+        setMobileTab,
+        setInputDrawerOpen,
       }}
     >
       {children}
