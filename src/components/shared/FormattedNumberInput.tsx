@@ -76,20 +76,41 @@ export function FormattedNumberInput({
     setDisplayValue(formatWithCommas(value));
   };
 
+  // If custom className is provided, use simpler layout
+  if (className) {
+    return (
+      <div className="flex items-center gap-1">
+        {prefix && <span className="text-text-muted text-sm">{prefix}</span>}
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="numeric"
+          className={className}
+          value={displayValue}
+          onChange={handleChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+        />
+        {suffix && <span className="text-text-muted text-sm">{suffix}</span>}
+      </div>
+    );
+  }
+
+  // Default styling with wrapped border
   return (
-    <div className="flex items-center gap-1">
-      {prefix && <span className="text-gray-500 text-xs">{prefix}</span>}
+    <div className="flex items-center border border-border-subtle rounded-lg bg-white focus-within:border-brand-teal focus-within:ring-1 focus-within:ring-brand-teal/30 transition-all">
+      {prefix && <span className="text-sm text-text-muted pl-3 select-none">{prefix}</span>}
       <input
         ref={inputRef}
         type="text"
         inputMode="numeric"
-        className={className ?? 'w-full border border-gray-300 rounded px-2 py-2 text-sm min-h-[44px]'}
+        className="w-full bg-transparent border-none outline-none px-2 py-2.5 text-base text-text-primary min-h-[44px] tabular-nums"
         value={displayValue}
         onChange={handleChange}
         onFocus={handleFocus}
         onBlur={handleBlur}
       />
-      {suffix && <span className="text-gray-500 text-xs">{suffix}</span>}
+      {suffix && <span className="text-sm text-text-muted pr-3 select-none">{suffix}</span>}
     </div>
   );
 }

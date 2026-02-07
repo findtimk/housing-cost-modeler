@@ -1,17 +1,34 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useAppContext } from '../../context/AppContext.tsx';
 import { computeGrid } from '../../engine/gridEngine.ts';
+import type { GridCell } from '../../engine/types.ts';
 import { fmtCurrency, fmtNumber } from '../shared/formatters.ts';
 import { GridConfigModal } from './GridConfigModal.tsx';
+import { Cog6ToothIcon } from '@heroicons/react/24/outline';
 
 function cellColor(surplus: number, threshold: number): string {
-  if (surplus < 0) return 'bg-red-100 text-red-800';
-  if (surplus < threshold) return 'bg-yellow-50 text-yellow-800';
-  return 'bg-green-100 text-green-800';
+  if (surplus < 0) return 'bg-brand-rose-light text-brand-rose';
+  if (surplus < threshold) return 'bg-brand-amber-light text-brand-amber';
+  return 'bg-brand-teal-light text-brand-teal-dark';
+}
+
+function hasBoundaryBelow(cells: GridCell[][], row: number, col: number): boolean {
+  const current = cells[row][col].surplus_monthly;
+  if (current < 0) return false;
+  const below = cells[row + 1]?.[col];
+  return below ? below.surplus_monthly < 0 : false;
+}
+
+function hasBoundaryRight(cells: GridCell[][], row: number, col: number): boolean {
+  const current = cells[row][col].surplus_monthly;
+  if (current < 0) return false;
+  const right = cells[row]?.[col + 1];
+  return right ? right.surplus_monthly < 0 : false;
 }
 
 export function GridView() {
   const { inputs, gridConfig, selectCell, toggleGridConfig } = useAppContext();
+  const [hoveredCell, setHoveredCell] = useState<{ row: number; col: number } | null>(null);
 
   const grid = useMemo(
     () => computeGrid(inputs, gridConfig),
@@ -19,91 +36,99 @@ export function GridView() {
   );
 
   return (
-    <div className="space-y-3">
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-        <div className="flex justify-between items-start mb-1">
-          <h3 className="text-sm font-semibold text-blue-800">What This Grid Shows</h3>
+    <div className="space-y-4">
+      {/* Explainer Box */}
+      <div className="bg-white border border-border-subtle rounded-xl p-5 shadow-sm">
+        <div className="flex justify-between items-start">
+          <p className="text-sm text-text-secondary leading-relaxed">
+            <strong className="text-brand-navy font-semibold">Find your comfort zone</strong> — each cell shows how much money you'd have left each month after mortgage, taxes, insurance, retirement, and living costs. Green means comfortable. Red means stretched too thin. Click any cell for the full breakdown.
+          </p>
           <button
             onClick={toggleGridConfig}
-            className="p-1.5 text-blue-600 hover:bg-blue-100 rounded transition-colors"
+            className="p-2 rounded-lg hover:bg-surface-warm text-text-secondary hover:text-brand-navy transition-colors ml-3 shrink-0"
             title="Grid Settings"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
+            <Cog6ToothIcon className="w-5 h-5" />
           </button>
         </div>
-        <p className="text-xs text-blue-700">
-          Each cell shows your <strong>monthly surplus</strong> (money left after all expenses)
-          for a given income (rows) and home price (columns). Positive = affordable; negative = over budget.
-        </p>
       </div>
 
-      <div className="overflow-auto">
-        <table className="text-xs border-collapse w-full">
-          <thead>
-            <tr>
-              <th className="p-1.5 text-left bg-gray-100 border border-gray-200 sticky left-0 z-10">
-                Income \ Price
-              </th>
-              {grid.prices.map((price) => (
-                <th
-                  key={price}
-                  className="p-1.5 text-center bg-gray-100 border border-gray-200 whitespace-nowrap"
-                >
-                  ${fmtNumber(price)}
+      {/* Grid Table */}
+      <div className="bg-white rounded-xl border border-border-subtle shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="text-sm border-collapse w-full">
+            <thead>
+              <tr>
+                <th className="px-4 py-3 text-left bg-surface-sidebar text-xs font-semibold uppercase text-text-secondary sticky left-0 z-20 border-b border-r border-border-subtle">
+                  Income \ Price
                 </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {grid.incomes.map((income, i) => (
-              <tr key={income}>
-                <td className="p-1.5 font-medium bg-gray-50 border border-gray-200 whitespace-nowrap sticky left-0 z-10">
-                  ${fmtNumber(income)}
-                </td>
-                {grid.cells[i].map((cell, j) => (
-                  <td
-                    key={grid.prices[j]}
-                    className={`p-1.5 text-center border border-gray-200 cursor-pointer hover:ring-2 hover:ring-blue-400 transition-shadow ${cellColor(cell.surplus_monthly, gridConfig.surplus_threshold)}`}
-                    onClick={() => selectCell(cell.income, cell.price)}
-                    title={`Income: $${fmtNumber(income)}, Price: $${fmtNumber(grid.prices[j])}\nSurplus: ${fmtCurrency(cell.surplus_monthly)}/mo`}
+                {grid.prices.map((price, j) => (
+                  <th
+                    key={price}
+                    className={`px-4 py-3 text-right bg-surface-sidebar text-xs font-semibold text-text-secondary whitespace-nowrap border-b border-border-subtle ${
+                      hoveredCell?.col === j ? 'bg-brand-navy/[0.03]' : ''
+                    }`}
                   >
-                    {fmtCurrency(cell.surplus_monthly)}
-                  </td>
+                    ${fmtNumber(price)}
+                  </th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {grid.incomes.map((income, i) => (
+                <tr key={income}>
+                  <td className={`px-4 py-3 font-semibold bg-surface-sidebar text-sm text-brand-navy whitespace-nowrap sticky left-0 z-10 border-r border-border-subtle ${
+                    hoveredCell?.row === i ? 'bg-brand-navy/[0.03]' : ''
+                  }`}>
+                    ${fmtNumber(income)}
+                  </td>
+                  {grid.cells[i].map((cell, j) => {
+                    const isHovered = hoveredCell?.row === i && hoveredCell?.col === j;
+                    const isInHoveredRow = hoveredCell?.row === i;
+                    const isInHoveredCol = hoveredCell?.col === j;
+                    const boundaryRight = hasBoundaryRight(grid.cells, i, j);
+                    const boundaryBelow = hasBoundaryBelow(grid.cells, i, j);
+
+                    return (
+                      <td
+                        key={grid.prices[j]}
+                        className={`px-4 py-3 text-right font-semibold tabular-nums cursor-pointer transition-all duration-150 ${cellColor(cell.surplus_monthly, gridConfig.surplus_threshold)} ${
+                          isHovered ? 'ring-2 ring-brand-navy/20 ring-inset z-10 relative' : ''
+                        } ${
+                          (isInHoveredRow || isInHoveredCol) && !isHovered ? 'brightness-95' : ''
+                        } ${
+                          boundaryRight ? 'border-r-2 border-r-brand-navy/10' : ''
+                        } ${
+                          boundaryBelow ? 'border-b-2 border-b-brand-navy/10' : ''
+                        }`}
+                        onClick={() => selectCell(cell.income, cell.price)}
+                        onMouseEnter={() => setHoveredCell({ row: i, col: j })}
+                        onMouseLeave={() => setHoveredCell(null)}
+                        title={`Income: $${fmtNumber(income)}, Price: $${fmtNumber(grid.prices[j])}\nSurplus: ${fmtCurrency(cell.surplus_monthly)}/mo`}
+                      >
+                        {fmtCurrency(cell.surplus_monthly)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <div className="mt-1 space-y-2">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-          <div className="flex items-center gap-1.5">
-            <span className="inline-block w-4 h-4 rounded bg-green-100 border border-green-300"></span>
-            <span className="text-gray-600">
-              <strong>Green:</strong> Meets comfort buffer (surplus ≥ ${gridConfig.surplus_threshold.toLocaleString()}/mo)
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="inline-block w-4 h-4 rounded bg-yellow-50 border border-yellow-300"></span>
-            <span className="text-gray-600">
-              <strong>Yellow:</strong> Below comfort buffer ($0 to ${gridConfig.surplus_threshold.toLocaleString()}/mo)
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="inline-block w-4 h-4 rounded bg-red-100 border border-red-300"></span>
-            <span className="text-gray-600">
-              <strong>Red:</strong> Unaffordable (negative surplus)
-            </span>
-          </div>
-        </div>
-        <p className="text-[10px] text-gray-400">
-          Click any cell to see detailed breakdown of taxes, housing costs, and cash flow.
-        </p>
+      {/* Legend */}
+      <div className="flex items-center gap-6 mt-4 px-2">
+        <span className="text-xs font-medium text-brand-teal-dark">Comfortable</span>
+        <div
+          className="h-2 flex-1 rounded-full max-w-md"
+          style={{ background: 'linear-gradient(to right, #ccfbf1, #fef3c7, #ffe4e6)' }}
+        />
+        <span className="text-xs font-medium text-brand-rose">Over Budget</span>
       </div>
+      <p className="text-xs text-text-muted italic mt-2 px-2">
+        Click any cell for full breakdown
+      </p>
 
       <GridConfigModal />
     </div>

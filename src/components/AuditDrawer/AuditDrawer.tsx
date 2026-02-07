@@ -3,6 +3,7 @@ import { useAppContext } from '../../context/AppContext.tsx';
 import { useBreakpoint } from '../../hooks/useBreakpoint.ts';
 import { computeScenario } from '../../engine/cashflowEngine.ts';
 import { fmtCurrencyExact, fmtPercentExact, fmtRate } from '../shared/formatters.ts';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 function AuditRow({
   label,
@@ -17,14 +18,14 @@ function AuditRow({
 }) {
   return (
     <div
-      className={`py-1.5 border-b border-gray-100 ${highlight ? 'bg-blue-50' : ''}`}
+      className={`py-1.5 ${highlight ? 'bg-surface-warm -mx-5 px-5' : ''}`}
     >
       <div className="flex justify-between text-sm">
-        <span className="text-gray-700">{label}</span>
-        <span className="font-mono text-gray-900">{value}</span>
+        <span className="text-text-primary">{label}</span>
+        <span className={`font-mono tabular-nums text-right ${highlight ? 'font-semibold' : ''}`}>{value}</span>
       </div>
       {formula && (
-        <div className="text-[10px] text-gray-400 font-mono mt-0.5">
+        <div className="text-xs text-text-muted font-mono mt-0.5">
           {formula}
         </div>
       )}
@@ -34,7 +35,7 @@ function AuditRow({
 
 function SectionHeader({ title }: { title: string }) {
   return (
-    <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mt-4 mb-1 pt-2 border-t border-gray-300">
+    <div className="text-xs font-semibold text-brand-teal uppercase tracking-wider mt-6 mb-3 pb-1 border-b border-border-subtle">
       {title}
     </div>
   );
@@ -66,32 +67,33 @@ export function AuditDrawer() {
       {/* Backdrop for mobile/tablet */}
       {isFullScreen && (
         <div
-          className="fixed inset-0 bg-black/30 z-40"
+          className="fixed inset-0 bg-brand-navy/20 z-40"
           onClick={toggleAudit}
         />
       )}
       <div
         className={`fixed bg-white shadow-xl z-50 overflow-y-auto ${
           isFullScreen
-            ? 'inset-4 rounded-lg'
-            : 'inset-y-0 right-0 w-96 border-l border-gray-200'
+            ? 'inset-4 rounded-xl'
+            : 'inset-y-0 right-0 w-96 border-l border-border-subtle'
         }`}
       >
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-3 flex justify-between items-center">
-          <h2 className="font-bold text-sm text-gray-800">
-            Audit — Calculation Detail
-          </h2>
+        <div className="sticky top-0 bg-brand-navy px-5 py-4 flex justify-between items-center">
+          <div>
+            <h2 className="font-semibold text-base text-white">
+              Calculation Detail
+            </h2>
+            <p className="text-xs text-white/60">Full math behind this scenario</p>
+          </div>
           <button
             onClick={toggleAudit}
-            className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+            className="p-1 text-white/70 hover:text-white hover:bg-white/10 rounded transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <XMarkIcon className="w-5 h-5" />
           </button>
         </div>
 
-      <div className="p-3">
+      <div className="p-5">
         <SectionHeader title="Income" />
         <AuditRow
           label="Gross Income (annual)"

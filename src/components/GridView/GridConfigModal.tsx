@@ -1,6 +1,7 @@
 import { useAppContext } from '../../context/AppContext.tsx';
 import { useBreakpoint } from '../../hooks/useBreakpoint.ts';
 import { GridControls } from './GridControls.tsx';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 export function GridConfigModal() {
   const { gridConfigOpen, toggleGridConfig } = useAppContext();
@@ -14,28 +15,26 @@ export function GridConfigModal() {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/30 z-40"
+        className="fixed inset-0 bg-brand-navy/20 z-40"
         onClick={toggleGridConfig}
       />
       <div
         className={`fixed bg-white shadow-xl z-50 overflow-y-auto ${
           isFullScreen
-            ? 'inset-4 rounded-lg'
-            : 'inset-y-0 right-0 w-80 border-l border-gray-200'
+            ? 'inset-4 rounded-xl'
+            : 'inset-y-0 right-0 w-80 border-l border-border-subtle'
         }`}
       >
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-3 flex justify-between items-center">
-          <h2 className="font-bold text-sm text-gray-800">Grid Settings</h2>
+        <div className="sticky top-0 bg-brand-navy px-5 py-4 flex justify-between items-center">
+          <h2 className="font-semibold text-base text-white">Grid Settings</h2>
           <button
             onClick={toggleGridConfig}
-            className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+            className="p-1 text-white/70 hover:text-white hover:bg-white/10 rounded transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <XMarkIcon className="w-5 h-5" />
           </button>
         </div>
-        <div className="p-3">
+        <div className="p-5">
           <GridControls />
         </div>
       </div>

@@ -14,13 +14,13 @@ function GridField({
   prefix?: string;
 }) {
   return (
-    <label className="flex items-center gap-1 text-xs text-gray-600">
+    <label className="flex items-center gap-2 text-sm text-text-secondary">
       <span className="w-12 shrink-0">{label}</span>
       <FormattedNumberInput
         value={value}
         onChange={onChange}
         prefix={prefix}
-        className="w-24 border border-gray-300 rounded px-1 py-0.5 text-xs"
+        className="w-28 border border-border-subtle rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:border-brand-teal focus:ring-1 focus:ring-brand-teal/30 transition-all"
       />
     </label>
   );
@@ -33,23 +33,27 @@ export function GridControls() {
     updateGridConfig(key, value);
 
   return (
-    <div className="flex flex-wrap gap-x-4 gap-y-1 p-2 bg-gray-50 rounded border border-gray-200 text-xs">
-      <div className="space-y-1">
-        <span className="font-semibold text-gray-700">Income</span>
-        <GridField label="Min" value={gridConfig.income_min} onChange={update('income_min')} prefix="$" />
-        <GridField label="Max" value={gridConfig.income_max} onChange={update('income_max')} prefix="$" />
-        <GridField label="Step" value={gridConfig.income_step} onChange={update('income_step')} prefix="$" />
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <span className="text-xs font-semibold uppercase tracking-wider text-text-secondary">Income</span>
+        <div className="space-y-2">
+          <GridField label="Min" value={gridConfig.income_min} onChange={update('income_min')} prefix="$" />
+          <GridField label="Max" value={gridConfig.income_max} onChange={update('income_max')} prefix="$" />
+          <GridField label="Step" value={gridConfig.income_step} onChange={update('income_step')} prefix="$" />
+        </div>
       </div>
-      <div className="space-y-1">
-        <span className="font-semibold text-gray-700">Home Price</span>
-        <GridField label="Min" value={gridConfig.price_min} onChange={update('price_min')} prefix="$" />
-        <GridField label="Max" value={gridConfig.price_max} onChange={update('price_max')} prefix="$" />
-        <GridField label="Step" value={gridConfig.price_step} onChange={update('price_step')} prefix="$" />
+      <div className="space-y-2">
+        <span className="text-xs font-semibold uppercase tracking-wider text-text-secondary">Home Price</span>
+        <div className="space-y-2">
+          <GridField label="Min" value={gridConfig.price_min} onChange={update('price_min')} prefix="$" />
+          <GridField label="Max" value={gridConfig.price_max} onChange={update('price_max')} prefix="$" />
+          <GridField label="Step" value={gridConfig.price_step} onChange={update('price_step')} prefix="$" />
+        </div>
       </div>
-      <div className="space-y-1">
-        <span className="font-semibold text-gray-700">Comfort Buffer</span>
+      <div className="space-y-2">
+        <span className="text-xs font-semibold uppercase tracking-wider text-text-secondary">Safety Margin</span>
         <GridField label="Monthly" value={gridConfig.surplus_threshold} onChange={update('surplus_threshold')} prefix="$" />
-        <p className="text-[10px] text-gray-400 max-w-[140px]">Surplus needed to show green</p>
+        <p className="text-xs text-text-muted italic">Monthly cushion needed to show as 'Comfortable' (green)</p>
       </div>
     </div>
   );
