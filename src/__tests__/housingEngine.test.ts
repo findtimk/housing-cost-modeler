@@ -47,6 +47,7 @@ describe('computeHousingCosts', () => {
     expect(result.insurance_monthly).toBeCloseTo(583.33, 0);
     expect(result.maintenance_monthly).toBeCloseTo(1_166.67, 0);
     expect(result.hoa_monthly).toBe(0);
+    expect(result.pitia_monthly).toBeCloseTo(7_944.27, 1);
     expect(result.housing_total_monthly).toBeCloseTo(9_110.93, 1);
   });
 
@@ -59,7 +60,21 @@ describe('computeHousingCosts', () => {
     expect(result.insurance_monthly).toBeCloseTo(750, 0);
     expect(result.maintenance_monthly).toBeCloseTo(1_500, 0);
     expect(result.hoa_monthly).toBe(300);
+    expect(result.pitia_monthly).toBeCloseTo(10_514.06, 1);
     expect(result.housing_total_monthly).toBeCloseTo(12_014.06, 1);
+  });
+
+  it('PITIA excludes maintenance; includes HOA', () => {
+    const result = computeHousingCosts(
+      1_000_000, 0.20, 0.06, 30, 0.01, 0.005, 0.01, 250,
+    );
+    expect(result.pitia_monthly).toBeCloseTo(
+      result.housing_total_monthly - result.maintenance_monthly,
+      6,
+    );
+    expect(result.pitia_monthly).toBeGreaterThan(
+      result.pi_monthly + result.property_tax_monthly + result.insurance_monthly,
+    );
   });
 
   it('computes G4 housing: $1.4M, different rates', () => {

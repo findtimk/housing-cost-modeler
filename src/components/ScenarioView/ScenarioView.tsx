@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useAppContext } from '../../context/AppContext.tsx';
 import { computeScenario } from '../../engine/cashflowEngine.ts';
+import { splitIncome } from '../../engine/incomeSplit.ts';
 import { fmtCurrency, fmtPercent } from '../shared/formatters.ts';
 import {
   ArrowLeftIcon,
@@ -38,7 +39,7 @@ function VerdictBadge({ surplus, threshold }: { surplus: number; threshold: numb
   return (
     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-teal-light border border-brand-teal/20 text-brand-teal-dark text-xs font-semibold mt-2">
       <CheckCircleIcon className="w-4 h-4" />
-      Comfortably affordable
+      Meets your surplus target
     </span>
   );
 }
@@ -145,6 +146,24 @@ function BreakdownRow({
 export function ScenarioView() {
   const { inputs, selectedCell, gridConfig, toggleAudit, setActiveView } = useAppContext();
 
+  // Hooks must run unconditionally, so the "no cell selected" return comes after them.
+  const scenarioInputs = useMemo(() => {
+    if (!selectedCell) return inputs;
+    const [earner1, earner2] = splitIncome(
+      selectedCell.income,
+      inputs.earner1_wages_annual,
+      inputs.earner2_wages_annual,
+    );
+    return {
+      ...inputs,
+      earner1_wages_annual: earner1,
+      earner2_wages_annual: earner2,
+      home_price: selectedCell.price,
+    };
+  }, [inputs, selectedCell]);
+
+  const result = useMemo(() => computeScenario(scenarioInputs), [scenarioInputs]);
+
   if (!selectedCell) {
     return (
       <div className="flex items-center justify-center h-64 text-text-muted text-sm">
@@ -153,18 +172,14 @@ export function ScenarioView() {
     );
   }
 
-  const scenarioInputs = useMemo(() => {
-    return { ...inputs, hhi_annual: selectedCell.income, home_price: selectedCell.price };
-  }, [inputs, selectedCell]);
-
-  const result = useMemo(() => computeScenario(scenarioInputs), [scenarioInputs]);
-
   const surplus = result.surplus_monthly;
   const threshold = gridConfig.surplus_threshold;
+  const householdIncome =
+    scenarioInputs.earner1_wages_annual + scenarioInputs.earner2_wages_annual;
 
   // Determine accent colors based on values
   const surplusColor = surplus < 0 ? '#e11d48' : surplus < threshold ? '#d97706' : '#0d9488';
-  const ratioColor = result.front_end_ratio > 0.36 ? '#e11d48' : result.front_end_ratio > 0.28 ? '#d97706' : '#0d9488';
+  const ratioColor = result.pitia_ratio > 0.36 ? '#e11d48' : result.pitia_ratio > 0.28 ? '#d97706' : '#0d9488';
 
   return (
     <div className="space-y-6">
@@ -182,7 +197,7 @@ export function ScenarioView() {
         <div className="flex justify-between items-start">
           <div>
             <h2 className="text-lg font-bold text-brand-navy">
-              {formatAbbreviatedAmount(scenarioInputs.hhi_annual)} income · {formatAbbreviatedAmount(scenarioInputs.home_price)} home
+              {formatAbbreviatedAmount(householdIncome)} income · {formatAbbreviatedAmount(scenarioInputs.home_price)} home
             </h2>
             <VerdictBadge surplus={surplus} threshold={threshold} />
           </div>
@@ -202,7 +217,7 @@ export function ScenarioView() {
           label="Money Left Over"
           value={fmtCurrency(surplus)}
           subtext="/month"
-          secondaryText="monthly surplus"
+          secondaryText="monthly surplus = gross − taxes − pre-tax retirement − after-tax savings − living expenses − housing total"
           accentColor={surplusColor}
         />
         <KPI
@@ -212,10 +227,10 @@ export function ScenarioView() {
           accentColor="#1a2b4a"
         />
         <KPI
-          label="Housing-to-Income Ratio"
-          value={fmtPercent(result.front_end_ratio)}
-          subtext="of gross income"
-          secondaryText="Lenders typically recommend under 28%"
+          label="Housing Ratio (PITIA)"
+          value={fmtPercent(result.pitia_ratio)}
+          subtext={`All-in incl. maintenance: ${fmtPercent(result.all_in_ratio)}`}
+          secondaryText="28% front-end / 36% back-end is a common lender rule of thumb for PITIA. This app's verdict is based on your monthly surplus instead."
           accentColor={ratioColor}
         />
       </div>
@@ -235,6 +250,12 @@ export function ScenarioView() {
           <div className="border-t border-border-subtle mt-2 pt-3">
             <BreakdownRow label="Total Housing" value={fmtCurrency(result.housing.housing_total_monthly)} />
           </div>
+          {scenarioInputs.down_payment_pct < 0.2 && (
+            <p className="text-xs text-brand-amber mt-2">
+              Down payment is below 20% — PMI isn't modeled, so actual costs
+              will be higher than shown.
+            </p>
+          )}
         </div>
 
         <div className="bg-white rounded-xl border border-border-subtle p-5 shadow-sm">
@@ -244,6 +265,12 @@ export function ScenarioView() {
           <BreakdownRow label="Medicare" value={fmtCurrency(result.tax.medicare_tax_annual / 12)} indent />
           <BreakdownRow label="Addl. Medicare" value={fmtCurrency(result.tax.addl_medicare_tax_annual / 12)} indent />
           <BreakdownRow label="State Tax" value={fmtCurrency(result.tax.state_tax_annual / 12)} indent />
+          {result.tax.pfml_tax_annual > 0 && (
+            <BreakdownRow label="WA Paid Leave (PFML)" value={fmtCurrency(result.tax.pfml_tax_annual / 12)} indent />
+          )}
+          {result.tax.wa_cares_tax_annual > 0 && (
+            <BreakdownRow label="WA Cares" value={fmtCurrency(result.tax.wa_cares_tax_annual / 12)} indent />
+          )}
           <div className="border-t border-border-subtle mt-2 pt-3">
             <BreakdownRow label="Total Taxes" value={fmtCurrency(result.tax.taxes_monthly)} />
           </div>

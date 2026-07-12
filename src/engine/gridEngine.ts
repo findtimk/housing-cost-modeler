@@ -23,16 +23,25 @@ export function computeGrid(
   const incomes = range(config.income_min, config.income_max, config.income_step);
   const prices = range(config.price_min, config.price_max, config.price_step);
 
-  // Pre-compute taxes per income level
+  // Pre-compute taxes per income level.
+  // The grid keeps a single household-income axis, so taxes here use a
+  // single-earner approximation (one SS/PFML cap). The scenario detail view
+  // splits income across earners and may differ slightly.
   const taxByIncome = incomes.map((income) =>
-    computeAllTaxes(
-      baseInputs.filing_status,
-      baseInputs.state,
-      income,
-      baseInputs.pre_tax_retirement_monthly,
-      baseInputs.other_pre_tax_deductions_annual,
-      baseInputs.state_effective_rate_override,
-    ),
+    computeAllTaxes({
+      filing_status: baseInputs.filing_status,
+      state: baseInputs.state,
+      earners: [
+        {
+          wages: income,
+          pfmlExempt: baseInputs.earner1_pfml_exempt,
+          waCaresExempt: baseInputs.earner1_wa_cares_exempt,
+        },
+      ],
+      pre_tax_retirement_monthly: baseInputs.pre_tax_retirement_monthly,
+      other_pre_tax_deductions_annual: baseInputs.other_pre_tax_deductions_annual,
+      state_effective_rate_override: baseInputs.state_effective_rate_override,
+    }),
   );
 
   // Pre-compute housing per price level
@@ -63,14 +72,17 @@ export function computeGrid(
         baseInputs.after_tax_retirement_monthly -
         baseInputs.living_expenses_monthly -
         housing.housing_total_monthly;
-      const frontEndRatio =
+      const pitiaRatio =
+        grossMonthly > 0 ? housing.pitia_monthly / grossMonthly : 0;
+      const allInRatio =
         grossMonthly > 0 ? housing.housing_total_monthly / grossMonthly : 0;
 
       return {
         income,
         price,
         surplus_monthly: surplusMonthly,
-        front_end_ratio: frontEndRatio,
+        pitia_ratio: pitiaRatio,
+        all_in_ratio: allInRatio,
       };
     });
   });

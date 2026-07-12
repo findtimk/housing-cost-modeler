@@ -1,12 +1,19 @@
 import { describe, it, expect } from 'vitest';
 import { computeScenario } from '../engine/cashflowEngine.ts';
+import { splitIncome } from '../engine/incomeSplit.ts';
+import { migrateInputs, DEFAULT_INPUTS } from '../components/InputPanel/defaults.ts';
 import type { ScenarioInputs } from '../engine/types.ts';
 
 function makeInputs(overrides: Partial<ScenarioInputs> = {}): ScenarioInputs {
   return {
     filing_status: 'MFJ',
     state: 'WA',
-    hhi_annual: 500_000,
+    earner1_wages_annual: 250_000,
+    earner2_wages_annual: 250_000,
+    earner1_pfml_exempt: false,
+    earner2_pfml_exempt: false,
+    earner1_wa_cares_exempt: false,
+    earner2_wa_cares_exempt: false,
     pre_tax_retirement_monthly: 4_000,
     after_tax_retirement_monthly: 0,
     living_expenses_monthly: 9_500,
@@ -29,15 +36,32 @@ describe('computeScenario', () => {
     expect(result.gross_monthly).toBeCloseTo(41_666.67, 1);
   });
 
-  it('computes correct net pay', () => {
+  it('computes correct net pay (per-earner SS + WA premiums)', () => {
     const result = computeScenario(makeInputs());
-    expect(result.net_pay_monthly).toBeCloseTo(32_651.08, 0);
+    expect(result.net_pay_monthly).toBeCloseTo(31_207.97, 0);
   });
 
-  it('computes correct front-end ratio', () => {
+  it('PITIA excludes maintenance', () => {
     const result = computeScenario(makeInputs());
-    // 9,110.93 / 41,666.67 ≈ 0.2187
-    expect(result.front_end_ratio).toBeCloseTo(0.2187, 2);
+    expect(result.housing.pitia_monthly).toBeCloseTo(
+      result.housing.housing_total_monthly - result.housing.maintenance_monthly,
+      2,
+    );
+    // P&I 6,194.27 + property tax 1,166.67 + insurance 583.33 + HOA 0
+    expect(result.housing.pitia_monthly).toBeCloseTo(7_944.27, 0);
+  });
+
+  it('computes both ratios; PITIA < all-in when maintenance > 0', () => {
+    const result = computeScenario(makeInputs());
+    // 7,944.27 / 41,666.67 ≈ 0.1907; 9,110.93 / 41,666.67 ≈ 0.2187
+    expect(result.pitia_ratio).toBeCloseTo(0.1907, 2);
+    expect(result.all_in_ratio).toBeCloseTo(0.2187, 2);
+    expect(result.pitia_ratio).toBeLessThan(result.all_in_ratio);
+  });
+
+  it('ratios are equal when maintenance is zero', () => {
+    const result = computeScenario(makeInputs({ maintenance_rate_annual: 0 }));
+    expect(result.pitia_ratio).toBeCloseTo(result.all_in_ratio, 6);
   });
 });
 
@@ -83,5 +107,48 @@ describe('AC1 — Pre-tax vs after-tax behavior', () => {
     );
 
     expect(morePretax.tax.taxes_monthly).toBeLessThan(base.tax.taxes_monthly);
+  });
+});
+
+describe('splitIncome', () => {
+  it('splits proportionally to base earner wages', () => {
+    expect(splitIncome(400_000, 300_000, 100_000)).toEqual([300_000, 100_000]);
+    expect(splitIncome(500_000, 300_000, 100_000)).toEqual([375_000, 125_000]);
+  });
+
+  it('falls back to 50/50 when both base wages are zero', () => {
+    expect(splitIncome(400_000, 0, 0)).toEqual([200_000, 200_000]);
+  });
+
+  it('gives everything to earner 1 when earner 2 is zero', () => {
+    expect(splitIncome(400_000, 250_000, 0)).toEqual([400_000, 0]);
+  });
+});
+
+describe('migrateInputs', () => {
+  it('maps legacy hhi_annual to earner 1 with earner 2 at zero', () => {
+    const migrated = migrateInputs({ hhi_annual: 500_000, state: 'WA' });
+    expect(migrated.earner1_wages_annual).toBe(500_000);
+    expect(migrated.earner2_wages_annual).toBe(0);
+    expect('hhi_annual' in migrated).toBe(false);
+  });
+
+  it('keeps explicit earner fields when present', () => {
+    const migrated = migrateInputs({
+      earner1_wages_annual: 300_000,
+      earner2_wages_annual: 100_000,
+    });
+    expect(migrated.earner1_wages_annual).toBe(300_000);
+    expect(migrated.earner2_wages_annual).toBe(100_000);
+  });
+
+  it('fills defaults for missing fields and invalid blobs', () => {
+    expect(migrateInputs(null)).toEqual(DEFAULT_INPUTS);
+    const migrated = migrateInputs({ state: 'CA' });
+    expect(migrated.state).toBe('CA');
+    expect(migrated.earner1_wages_annual).toBe(
+      DEFAULT_INPUTS.earner1_wages_annual,
+    );
+    expect(migrated.earner1_pfml_exempt).toBe(false);
   });
 });

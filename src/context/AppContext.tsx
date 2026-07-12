@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { ScenarioInputs, GridConfig } from '../engine/types.ts';
-import { DEFAULT_INPUTS, DEFAULT_GRID_CONFIG } from '../components/InputPanel/defaults.ts';
+import { DEFAULT_INPUTS, DEFAULT_GRID_CONFIG, migrateInputs } from '../components/InputPanel/defaults.ts';
 
 const STORAGE_KEY = 'home-affordability-inputs';
 const GRID_STORAGE_KEY = 'home-affordability-grid-config';
@@ -8,7 +8,7 @@ const GRID_STORAGE_KEY = 'home-affordability-grid-config';
 function loadInputs(): ScenarioInputs {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return { ...DEFAULT_INPUTS, ...JSON.parse(saved) };
+    if (saved) return migrateInputs(JSON.parse(saved));
   } catch { /* ignore */ }
   return { ...DEFAULT_INPUTS };
 }

@@ -10,6 +10,8 @@ import {
   HomeModernIcon,
   ChevronDownIcon,
   ArrowPathIcon,
+  UsersIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 
 const STATES = Object.keys(STATE_EFFECTIVE_RATES).sort();
@@ -101,11 +103,36 @@ function NumberInput({
   );
 }
 
+function Checkbox({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center gap-2 text-xs font-medium text-text-secondary cursor-pointer min-h-[28px]">
+      <input
+        type="checkbox"
+        className="w-4 h-4 rounded border-border-subtle text-brand-teal focus:ring-brand-teal/30"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      {label}
+    </label>
+  );
+}
+
 export function InputPanel() {
   const { inputs, updateInput, resetDefaults } = useAppContext();
 
   const update = <K extends keyof ScenarioInputs>(key: K) => (value: ScenarioInputs[K]) =>
     updateInput(key, value);
+
+  const householdTotal = inputs.earner1_wages_annual + inputs.earner2_wages_annual;
+  const isWA = inputs.state === 'WA';
 
   return (
     <div className="h-full overflow-y-auto p-4 space-y-1">
@@ -119,6 +146,65 @@ export function InputPanel() {
           Reset
         </button>
       </div>
+
+      <Section title="Income" hint="Annual wages per earner" icon={UsersIcon}>
+        <Field label="Earner 1 Wages ($/year)">
+          <FormattedNumberInput
+            value={inputs.earner1_wages_annual}
+            onChange={update('earner1_wages_annual')}
+            prefix="$"
+            min={0}
+          />
+        </Field>
+        <Field label="Earner 2 Wages ($/year)">
+          <FormattedNumberInput
+            value={inputs.earner2_wages_annual}
+            onChange={update('earner2_wages_annual')}
+            prefix="$"
+            min={0}
+          />
+        </Field>
+        <p className="text-xs text-text-muted">
+          Household total: ${householdTotal.toLocaleString()}
+        </p>
+        {inputs.filing_status === 'SINGLE' && inputs.earner2_wages_annual > 0 && (
+          <p className="text-xs text-text-muted italic">
+            Note: two earners with Single filing status is unusual — taxes are
+            estimated as one Single return on combined income.
+          </p>
+        )}
+        {isWA && (
+          <div className="space-y-1 pt-1">
+            <p className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider">
+              WA payroll programs
+            </p>
+            <Checkbox
+              label="Earner 1: PFML exempt / employer-paid"
+              checked={inputs.earner1_pfml_exempt}
+              onChange={update('earner1_pfml_exempt')}
+            />
+            <Checkbox
+              label="Earner 1: WA Cares exempt"
+              checked={inputs.earner1_wa_cares_exempt}
+              onChange={update('earner1_wa_cares_exempt')}
+            />
+            {inputs.earner2_wages_annual > 0 && (
+              <>
+                <Checkbox
+                  label="Earner 2: PFML exempt / employer-paid"
+                  checked={inputs.earner2_pfml_exempt}
+                  onChange={update('earner2_pfml_exempt')}
+                />
+                <Checkbox
+                  label="Earner 2: WA Cares exempt"
+                  checked={inputs.earner2_wa_cares_exempt}
+                  onChange={update('earner2_wa_cares_exempt')}
+                />
+              </>
+            )}
+          </div>
+        )}
+      </Section>
 
       <Section title="Savings" hint="Retirement & other savings" icon={BanknotesIcon}>
         <Field label="Pre-tax Retirement ($/month)">
@@ -206,6 +292,15 @@ export function InputPanel() {
             max={100}
           />
         </Field>
+        {inputs.down_payment_pct < 0.2 && (
+          <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+            <ExclamationTriangleIcon className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>
+              Below 20% down typically requires PMI, which this model doesn't
+              include — actual monthly costs will be higher than shown.
+            </span>
+          </div>
+        )}
         <Field label="Interest Rate (APR)">
           <NumberInput
             value={inputs.apr * 100}

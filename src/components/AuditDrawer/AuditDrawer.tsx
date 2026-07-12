@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useAppContext } from '../../context/AppContext.tsx';
 import { useBreakpoint } from '../../hooks/useBreakpoint.ts';
 import { computeScenario } from '../../engine/cashflowEngine.ts';
+import { splitIncome } from '../../engine/incomeSplit.ts';
 import { fmtCurrencyExact, fmtPercentExact, fmtRate } from '../shared/formatters.ts';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
@@ -47,9 +48,15 @@ export function AuditDrawer() {
 
   const scenarioInputs = useMemo(() => {
     if (selectedCell) {
+      const [earner1, earner2] = splitIncome(
+        selectedCell.income,
+        inputs.earner1_wages_annual,
+        inputs.earner2_wages_annual,
+      );
       return {
         ...inputs,
-        hhi_annual: selectedCell.income,
+        earner1_wages_annual: earner1,
+        earner2_wages_annual: earner2,
         home_price: selectedCell.price,
       };
     }
@@ -96,14 +103,22 @@ export function AuditDrawer() {
       <div className="p-5">
         <SectionHeader title="Income" />
         <AuditRow
+          label="Earner 1 Wages (annual)"
+          value={fmtCurrencyExact(r.inputs.earner1_wages_annual)}
+        />
+        <AuditRow
+          label="Earner 2 Wages (annual)"
+          value={fmtCurrencyExact(r.inputs.earner2_wages_annual)}
+        />
+        <AuditRow
           label="Gross Income (annual)"
           value={fmtCurrencyExact(r.tax.wages_annual)}
-          formula="= hhi_annual"
+          formula="= earner1_wages + earner2_wages"
         />
         <AuditRow
           label="Gross Income (monthly)"
           value={fmtCurrencyExact(r.gross_monthly)}
-          formula="= hhi_annual / 12"
+          formula="= gross_annual / 12"
         />
 
         <SectionHeader title="Pre-tax Deductions" />
@@ -141,10 +156,18 @@ export function AuditDrawer() {
         />
 
         <SectionHeader title="Payroll Tax" />
+        {r.tax.ss_tax_by_earner.map((ssTax, i) => (
+          <AuditRow
+            key={i}
+            label={`Social Security — Earner ${i + 1} (annual)`}
+            value={fmtCurrencyExact(ssTax)}
+            formula="= min(earner_wages, $184,500) * 6.2%"
+          />
+        ))}
         <AuditRow
-          label="Social Security (annual)"
+          label="Social Security Total (annual)"
           value={fmtCurrencyExact(r.tax.ss_tax_annual)}
-          formula="= min(wages, $184,500) * 6.2%"
+          formula="= sum of per-earner SS (wage base applies per earner)"
         />
         <AuditRow
           label="Medicare (annual)"
@@ -154,7 +177,7 @@ export function AuditDrawer() {
         <AuditRow
           label="Additional Medicare (annual)"
           value={fmtCurrencyExact(r.tax.addl_medicare_tax_annual)}
-          formula={`= max(0, wages - $${r.inputs.filing_status === 'MFJ' ? '250k' : '200k'}) * 0.9%`}
+          formula={`= max(0, combined_wages - $${r.inputs.filing_status === 'MFJ' ? '250k' : '200k'}) * 0.9% (per return, not per earner)`}
         />
         <AuditRow
           label="Total Payroll Tax (annual)"
@@ -162,6 +185,22 @@ export function AuditDrawer() {
           formula="= SS + Medicare + Addl Medicare"
           highlight
         />
+
+        {r.inputs.state === 'WA' && (
+          <>
+            <SectionHeader title="WA Premiums" />
+            <AuditRow
+              label="WA Paid Leave / PFML (annual)"
+              value={fmtCurrencyExact(r.tax.pfml_tax_annual)}
+              formula="= min(earner_wages, $184,500) * 0.807% per earner; exempt earners $0"
+            />
+            <AuditRow
+              label="WA Cares (annual)"
+              value={fmtCurrencyExact(r.tax.wa_cares_tax_annual)}
+              formula="= earner_wages * 0.58%, no cap; exempt earners $0"
+            />
+          </>
+        )}
 
         <SectionHeader title="State Tax" />
         <AuditRow
@@ -185,7 +224,7 @@ export function AuditDrawer() {
         <AuditRow
           label="Total Taxes (annual)"
           value={fmtCurrencyExact(r.tax.taxes_annual)}
-          formula="= federal + payroll + state"
+          formula="= federal + payroll + state + WA premiums"
         />
         <AuditRow
           label="Total Taxes (monthly)"
@@ -233,9 +272,14 @@ export function AuditDrawer() {
           value={fmtCurrencyExact(r.housing.hoa_monthly)}
         />
         <AuditRow
+          label="PITIA (monthly)"
+          value={fmtCurrencyExact(r.housing.pitia_monthly)}
+          formula="= P&I + property_tax + insurance + HOA (lender view, excludes maintenance)"
+        />
+        <AuditRow
           label="Total Housing (monthly)"
           value={fmtCurrencyExact(r.housing.housing_total_monthly)}
-          formula="= P&I + property_tax + insurance + maintenance + HOA"
+          formula="= PITIA + maintenance"
           highlight
         />
 
@@ -255,9 +299,15 @@ export function AuditDrawer() {
           highlight
         />
         <AuditRow
-          label="Front-end Ratio"
-          value={fmtPercentExact(r.front_end_ratio)}
-          formula="= housing_total / gross_monthly"
+          label="PITIA Ratio"
+          value={fmtPercentExact(r.pitia_ratio)}
+          formula="= (P&I + property_tax + insurance + HOA) / gross_monthly"
+          highlight
+        />
+        <AuditRow
+          label="All-in Ratio"
+          value={fmtPercentExact(r.all_in_ratio)}
+          formula="= housing_total (incl. maintenance) / gross_monthly"
           highlight
         />
       </div>

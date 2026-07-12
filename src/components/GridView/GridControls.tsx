@@ -53,7 +53,7 @@ export function GridControls() {
       <div className="space-y-2">
         <span className="text-xs font-semibold uppercase tracking-wider text-text-secondary">Safety Margin</span>
         <GridField label="Monthly" value={gridConfig.surplus_threshold} onChange={update('surplus_threshold')} prefix="$" />
-        <p className="text-xs text-text-muted italic">Monthly cushion needed to show as 'Comfortable' (green)</p>
+        <p className="text-xs text-text-muted italic">Monthly cushion needed to show green (meets your surplus target)</p>
       </div>
     </div>
   );

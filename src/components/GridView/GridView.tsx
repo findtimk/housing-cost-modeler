@@ -41,7 +41,7 @@ export function GridView() {
       <div className="bg-white border border-border-subtle rounded-xl p-5 shadow-sm">
         <div className="flex justify-between items-start">
           <p className="text-sm text-text-secondary leading-relaxed">
-            <strong className="text-brand-navy font-semibold">Find your comfort zone</strong> — each cell shows how much money you'd have left each month after mortgage, taxes, insurance, retirement, and living costs. Green means comfortable. Red means stretched too thin. Click any cell for the full breakdown.
+            <strong className="text-brand-navy font-semibold">Find your comfort zone</strong> — each cell shows how much money you'd have left each month after mortgage, taxes, insurance, retirement, and living costs. Green means the surplus meets your target. Red means over budget. Click any cell for the full breakdown.
           </p>
           <button
             onClick={toggleGridConfig}
@@ -119,7 +119,7 @@ export function GridView() {
 
       {/* Legend */}
       <div className="flex items-center gap-6 mt-4 px-2">
-        <span className="text-xs font-medium text-brand-teal-dark">Comfortable</span>
+        <span className="text-xs font-medium text-brand-teal-dark">Meets surplus target</span>
         <div
           className="h-2 flex-1 rounded-full max-w-md"
           style={{ background: 'linear-gradient(to right, #ccfbf1, #fef3c7, #ffe4e6)' }}
@@ -127,7 +127,9 @@ export function GridView() {
         <span className="text-xs font-medium text-brand-rose">Over Budget</span>
       </div>
       <p className="text-xs text-text-muted italic mt-2 px-2">
-        Click any cell for full breakdown
+        Click any cell for full breakdown. The grid uses a simplified
+        single-earner tax estimate; the detail view splits income across
+        earners, so its numbers may differ slightly.
       </p>
 
       <GridConfigModal />

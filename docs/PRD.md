@@ -1,6 +1,16 @@
-# Home Affordability Modeler — PRD (v1)
+# Home Affordability Modeler — PRD (v1, amended for v2)
 
-**Last updated:** 2026-02-04
+**Last updated:** 2026-07-11
+
+## v2 changes (2026-07)
+
+Accuracy improvements over v1 (see SPEC v2 for exact formulas):
+- **Per-earner wage inputs** (earner 1 / earner 2) replace the single HHI input. Social Security's wage base now caps **per earner** — the v1 single-cap-on-combined-income approach understated FICA for dual-earner households by up to ~$11.4K/yr.
+- **WA payroll programs**: WA Paid Family & Medical Leave (employee share, capped at the SS wage base per earner) and WA Cares (0.58%, uncapped), with per-earner exemption/employer-paid toggles. Applied only when state = WA.
+- **Dual ratios**: the lender-style **PITIA ratio** (P&I + tax + insurance + HOA, over gross) is now separate from the **all-in ownership ratio** (including maintenance). The 28%/36% rule-of-thumb guidance references PITIA; v1 incorrectly compared a maintenance-inclusive number against lender guidelines.
+- **Sub-20% down warning** (not a block): PMI remains unmodeled, so the UI warns that costs are understated below 20% down.
+- **Wording**: "Comfortable" verdicts renamed to "Meets your surplus target"; the surplus definition is stated explicitly in the UI; universal "lenders recommend" language replaced with rule-of-thumb framing.
+- The **grid keeps a single household-income axis** with a single-earner tax approximation; the scenario detail view splits income across earners proportionally (so cell and detail values can differ slightly — noted in the UI).
 
 ## 1) Summary
 
@@ -32,7 +42,7 @@ A web app that models **ongoing monthly affordability** of a home purchase using
 
 ## 2) Target user and use cases
 
-**Target user:** high-income dual-income household planning via a single **HHI** input.
+**Target user:** high-income dual-income household planning via **per-earner wage inputs** (v2; v1 used a single HHI input).
 
 ### Primary use cases
 1. **Purchase decision:** “Which home prices keep me from going negative monthly cash flow given my spending and savings goals?”
@@ -118,9 +128,10 @@ A web app that models **ongoing monthly affordability** of a home purchase using
 ### FR2 — Tax engine (simplified estimator)
 - Federal income tax with standard deduction and progressive brackets (by filing status)
 - Payroll taxes:
-  - Social Security up to wage base
+  - Social Security up to wage base (**per earner**, v2)
   - Medicare on all wages
-  - Additional Medicare above threshold
+  - Additional Medicare above threshold (combined wages, per return)
+- WA PFML + WA Cares premiums with per-earner exemption toggles (v2, WA only)
 - State selection with **default WA**; state income tax handled via v1 approach (see SPEC)
 
 ### FR3 — Housing cost engine

@@ -51,6 +51,18 @@ export const ADDL_MEDICARE_THRESHOLD: Record<FilingStatus, number> = {
 };
 
 /**
+ * WA Paid Family & Medical Leave (2026): total premium 1.13%, employee share 71.43%.
+ * Source: WA ESD, announced fall 2025. Premiums are per-employee, capped at the
+ * Social Security wage base (SS_WAGE_BASE).
+ */
+export const WA_PFML_TOTAL_RATE = 0.0113;
+export const WA_PFML_EMPLOYEE_SHARE = 0.7143;
+export const WA_PFML_EMPLOYEE_RATE = WA_PFML_TOTAL_RATE * WA_PFML_EMPLOYEE_SHARE;
+
+/** WA Cares (long-term care) employee rate: 0.58% of all wages, no cap. Set by statute. */
+export const WA_CARES_RATE = 0.0058;
+
+/**
  * State effective income tax rates (v1 simplified).
  * Applied to adj_wages_for_state.
  */

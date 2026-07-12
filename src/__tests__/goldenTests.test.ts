@@ -8,12 +8,24 @@ const MONEY_TOL = 1;
 /** Tolerance: ±0.01 for ratios (as decimal) */
 const RATIO_TOL = 0.01;
 
-// ─── G1 — Base WA: $500k HHI, $1.4M home ──────────────────────────
+const NO_EXEMPTIONS = {
+  earner1_pfml_exempt: false,
+  earner2_pfml_exempt: false,
+  earner1_wa_cares_exempt: false,
+  earner2_wa_cares_exempt: false,
+};
+
+// ─── G1 — Base WA: 250k/250k earners, $1.4M home ──────────────────
+// Both earners exceed the $184,500 SS wage base, so SS = 2 × 11,439.
+// PFML capped per earner: 2 × 184,500 × 0.807159% = 2,978.42.
+// WA Cares uncapped: 500,000 × 0.58% = 2,900.
 
 const G1_INPUTS: ScenarioInputs = {
   filing_status: 'MFJ',
   state: 'WA',
-  hhi_annual: 500_000,
+  earner1_wages_annual: 250_000,
+  earner2_wages_annual: 250_000,
+  ...NO_EXEMPTIONS,
   pre_tax_retirement_monthly: 4_000,
   after_tax_retirement_monthly: 0,
   living_expenses_monthly: 9_500,
@@ -28,7 +40,7 @@ const G1_INPUTS: ScenarioInputs = {
   hoa_monthly: 0,
 };
 
-describe('G1 — Base WA: $500k HHI, $1.4M home', () => {
+describe('G1 — Base WA: 250k/250k earners, $1.4M home', () => {
   const r = computeScenario(G1_INPUTS);
 
   it('gross monthly', () => {
@@ -43,8 +55,17 @@ describe('G1 — Base WA: $500k HHI, $1.4M home', () => {
     expect(r.tax.federal_tax_annual).toBeCloseTo(87_248, MONEY_TOL);
   });
 
-  it('payroll taxes (annual)', () => {
-    expect(r.tax.payroll_tax_annual).toBeCloseTo(20_939, MONEY_TOL);
+  it('payroll taxes (annual) — SS capped per earner', () => {
+    // SS 22,878 + Medicare 7,250 + Addl Medicare 2,250
+    expect(r.tax.payroll_tax_annual).toBeCloseTo(32_378, MONEY_TOL);
+  });
+
+  it('WA PFML (annual)', () => {
+    expect(r.tax.pfml_tax_annual).toBeCloseTo(2_978.42, MONEY_TOL);
+  });
+
+  it('WA Cares (annual)', () => {
+    expect(r.tax.wa_cares_tax_annual).toBeCloseTo(2_900, MONEY_TOL);
   });
 
   it('state income tax (annual)', () => {
@@ -52,11 +73,12 @@ describe('G1 — Base WA: $500k HHI, $1.4M home', () => {
   });
 
   it('taxes (monthly)', () => {
-    expect(r.tax.taxes_monthly).toBeCloseTo(9_015.58, 0);
+    // (87,248 + 32,378 + 2,978.42 + 2,900) / 12
+    expect(r.tax.taxes_monthly).toBeCloseTo(10_458.70, 0);
   });
 
   it('net pay (monthly)', () => {
-    expect(r.net_pay_monthly).toBeCloseTo(32_651.08, 0);
+    expect(r.net_pay_monthly).toBeCloseTo(31_207.97, 0);
   });
 
   it('mortgage P&I', () => {
@@ -79,25 +101,36 @@ describe('G1 — Base WA: $500k HHI, $1.4M home', () => {
     expect(r.housing.hoa_monthly).toBe(0);
   });
 
+  it('PITIA monthly (excludes maintenance)', () => {
+    expect(r.housing.pitia_monthly).toBeCloseTo(7_944.27, 0);
+  });
+
   it('total housing', () => {
     expect(r.housing.housing_total_monthly).toBeCloseTo(9_110.93, 0);
   });
 
-  it('front-end ratio ~22%', () => {
-    expect(Math.round(r.front_end_ratio * 100)).toBeCloseTo(22, RATIO_TOL);
+  it('PITIA ratio ~19%', () => {
+    expect(Math.round(r.pitia_ratio * 100)).toBeCloseTo(19, RATIO_TOL);
+  });
+
+  it('all-in ratio ~22%', () => {
+    expect(Math.round(r.all_in_ratio * 100)).toBeCloseTo(22, RATIO_TOL);
   });
 
   it('monthly surplus', () => {
-    expect(r.surplus_monthly).toBeCloseTo(10_040.15, 0);
+    expect(r.surplus_monthly).toBeCloseTo(8_597.03, 0);
   });
 });
 
-// ─── G2 — Stress WA: $350k HHI, $1.4M home ────────────────────────
+// ─── G2 — Stress WA: 200k/150k earners, $1.4M home ────────────────
+// Earner 1 hits the SS/PFML caps; earner 2 does not.
 
 const G2_INPUTS: ScenarioInputs = {
   filing_status: 'MFJ',
   state: 'WA',
-  hhi_annual: 350_000,
+  earner1_wages_annual: 200_000,
+  earner2_wages_annual: 150_000,
+  ...NO_EXEMPTIONS,
   pre_tax_retirement_monthly: 3_000,
   after_tax_retirement_monthly: 0,
   living_expenses_monthly: 8_500,
@@ -112,7 +145,7 @@ const G2_INPUTS: ScenarioInputs = {
   hoa_monthly: 0,
 };
 
-describe('G2 — Stress WA: $350k HHI, $1.4M home', () => {
+describe('G2 — Stress WA: 200k/150k earners, $1.4M home', () => {
   const r = computeScenario(G2_INPUTS);
 
   it('gross monthly', () => {
@@ -128,7 +161,17 @@ describe('G2 — Stress WA: $350k HHI, $1.4M home', () => {
   });
 
   it('payroll taxes (annual)', () => {
-    expect(r.tax.payroll_tax_annual).toBeCloseTo(17_414, MONEY_TOL);
+    // SS: 11,439 (capped) + 9,300 = 20,739; Medicare 5,075; Addl Medicare 900
+    expect(r.tax.payroll_tax_annual).toBeCloseTo(26_714, MONEY_TOL);
+  });
+
+  it('WA PFML (annual)', () => {
+    // Earner 1 capped: 1,489.21; earner 2: 150,000 × 0.807159% = 1,210.74
+    expect(r.tax.pfml_tax_annual).toBeCloseTo(2_699.95, MONEY_TOL);
+  });
+
+  it('WA Cares (annual)', () => {
+    expect(r.tax.wa_cares_tax_annual).toBeCloseTo(2_030, MONEY_TOL);
   });
 
   it('state income tax (annual)', () => {
@@ -136,11 +179,11 @@ describe('G2 — Stress WA: $350k HHI, $1.4M home', () => {
   });
 
   it('taxes (monthly)', () => {
-    expect(r.tax.taxes_monthly).toBeCloseTo(5_853.50, 0);
+    expect(r.tax.taxes_monthly).toBeCloseTo(7_022.66, 0);
   });
 
   it('net pay (monthly)', () => {
-    expect(r.net_pay_monthly).toBeCloseTo(23_313.17, 0);
+    expect(r.net_pay_monthly).toBeCloseTo(22_144.00, 0);
   });
 
   it('mortgage P&I', () => {
@@ -151,21 +194,27 @@ describe('G2 — Stress WA: $350k HHI, $1.4M home', () => {
     expect(r.housing.housing_total_monthly).toBeCloseTo(9_110.93, 0);
   });
 
-  it('front-end ratio ~31%', () => {
-    expect(Math.round(r.front_end_ratio * 100)).toBeCloseTo(31, RATIO_TOL);
+  it('PITIA ratio ~27%', () => {
+    expect(Math.round(r.pitia_ratio * 100)).toBeCloseTo(27, RATIO_TOL);
+  });
+
+  it('all-in ratio ~31%', () => {
+    expect(Math.round(r.all_in_ratio * 100)).toBeCloseTo(31, RATIO_TOL);
   });
 
   it('monthly surplus', () => {
-    expect(r.surplus_monthly).toBeCloseTo(2_702.23, 0);
+    expect(r.surplus_monthly).toBeCloseTo(1_533.07, 0);
   });
 });
 
-// ─── G3 — Higher price WA: $600k HHI, $1.8M home + HOA ────────────
+// ─── G3 — Higher price WA: 300k/300k earners, $1.8M home + HOA ────
 
 const G3_INPUTS: ScenarioInputs = {
   filing_status: 'MFJ',
   state: 'WA',
-  hhi_annual: 600_000,
+  earner1_wages_annual: 300_000,
+  earner2_wages_annual: 300_000,
+  ...NO_EXEMPTIONS,
   pre_tax_retirement_monthly: 5_000,
   after_tax_retirement_monthly: 0,
   living_expenses_monthly: 11_000,
@@ -180,7 +229,7 @@ const G3_INPUTS: ScenarioInputs = {
   hoa_monthly: 300,
 };
 
-describe('G3 — Higher price WA: $600k HHI, $1.8M home + HOA', () => {
+describe('G3 — Higher price WA: 300k/300k earners, $1.8M home + HOA', () => {
   const r = computeScenario(G3_INPUTS);
 
   it('gross monthly', () => {
@@ -196,7 +245,16 @@ describe('G3 — Higher price WA: $600k HHI, $1.8M home + HOA', () => {
   });
 
   it('payroll taxes (annual)', () => {
-    expect(r.tax.payroll_tax_annual).toBeCloseTo(23_289, MONEY_TOL);
+    // SS: 2 × 11,439 = 22,878; Medicare 8,700; Addl Medicare 3,150
+    expect(r.tax.payroll_tax_annual).toBeCloseTo(34_728, MONEY_TOL);
+  });
+
+  it('WA PFML (annual) — both earners capped', () => {
+    expect(r.tax.pfml_tax_annual).toBeCloseTo(2_978.42, MONEY_TOL);
+  });
+
+  it('WA Cares (annual)', () => {
+    expect(r.tax.wa_cares_tax_annual).toBeCloseTo(3_480, MONEY_TOL);
   });
 
   it('state income tax (annual)', () => {
@@ -204,11 +262,11 @@ describe('G3 — Higher price WA: $600k HHI, $1.8M home + HOA', () => {
   });
 
   it('taxes (monthly)', () => {
-    expect(r.tax.taxes_monthly).toBeCloseTo(11_558.08, 0);
+    expect(r.tax.taxes_monthly).toBeCloseTo(13_049.53, 0);
   });
 
   it('net pay (monthly)', () => {
-    expect(r.net_pay_monthly).toBeCloseTo(38_441.92, 0);
+    expect(r.net_pay_monthly).toBeCloseTo(36_950.47, 0);
   });
 
   it('mortgage P&I', () => {
@@ -231,26 +289,39 @@ describe('G3 — Higher price WA: $600k HHI, $1.8M home + HOA', () => {
     expect(r.housing.hoa_monthly).toBe(300);
   });
 
+  it('PITIA monthly (excludes maintenance)', () => {
+    expect(r.housing.pitia_monthly).toBeCloseTo(10_514.06, 0);
+  });
+
   it('total housing', () => {
     expect(r.housing.housing_total_monthly).toBeCloseTo(12_014.06, 0);
   });
 
-  it('front-end ratio ~24%', () => {
-    expect(Math.round(r.front_end_ratio * 100)).toBeCloseTo(24, RATIO_TOL);
+  it('PITIA ratio ~21%', () => {
+    expect(Math.round(r.pitia_ratio * 100)).toBeCloseTo(21, RATIO_TOL);
+  });
+
+  it('all-in ratio ~24%', () => {
+    expect(Math.round(r.all_in_ratio * 100)).toBeCloseTo(24, RATIO_TOL);
   });
 
   it('monthly surplus', () => {
-    expect(r.surplus_monthly).toBeCloseTo(10_427.86, 0);
+    expect(r.surplus_monthly).toBeCloseTo(8_936.41, 0);
   });
 });
 
-// ─── G4 — State tax: CA 6%, $500k HHI, $1.4M home ─────────────────
+// ─── G4 — State tax: CA 6%, single 500k earner, $1.4M home ────────
+// Regression anchor: single earner outside WA, so payroll matches the
+// pre-per-earner model exactly and no WA premiums apply. All values
+// unchanged from the original spec.
 
 const G4_INPUTS: ScenarioInputs = {
   filing_status: 'MFJ',
   state: 'CA',
   state_effective_rate_override: 0.06,
-  hhi_annual: 500_000,
+  earner1_wages_annual: 500_000,
+  earner2_wages_annual: 0,
+  ...NO_EXEMPTIONS,
   pre_tax_retirement_monthly: 4_000,
   after_tax_retirement_monthly: 0,
   living_expenses_monthly: 9_500,
@@ -265,7 +336,7 @@ const G4_INPUTS: ScenarioInputs = {
   hoa_monthly: 0,
 };
 
-describe('G4 — State tax: CA 6%, $500k HHI, $1.4M home', () => {
+describe('G4 — State tax: CA 6%, single 500k earner, $1.4M home', () => {
   const r = computeScenario(G4_INPUTS);
 
   it('gross monthly', () => {
@@ -282,6 +353,11 @@ describe('G4 — State tax: CA 6%, $500k HHI, $1.4M home', () => {
 
   it('payroll taxes (annual)', () => {
     expect(r.tax.payroll_tax_annual).toBeCloseTo(20_939, MONEY_TOL);
+  });
+
+  it('no WA premiums in CA', () => {
+    expect(r.tax.pfml_tax_annual).toBe(0);
+    expect(r.tax.wa_cares_tax_annual).toBe(0);
   });
 
   it('state income tax (annual)', () => {
@@ -308,12 +384,20 @@ describe('G4 — State tax: CA 6%, $500k HHI, $1.4M home', () => {
     expect(r.housing.insurance_monthly).toBeCloseTo(700, 0);
   });
 
+  it('PITIA monthly (excludes maintenance)', () => {
+    expect(r.housing.pitia_monthly).toBeCloseTo(8_294.27, 0);
+  });
+
   it('total housing', () => {
     expect(r.housing.housing_total_monthly).toBeCloseTo(9_460.93, 0);
   });
 
-  it('front-end ratio ~23%', () => {
-    expect(Math.round(r.front_end_ratio * 100)).toBeCloseTo(23, RATIO_TOL);
+  it('PITIA ratio ~20%', () => {
+    expect(Math.round(r.pitia_ratio * 100)).toBeCloseTo(20, RATIO_TOL);
+  });
+
+  it('all-in ratio ~23%', () => {
+    expect(Math.round(r.all_in_ratio * 100)).toBeCloseTo(23, RATIO_TOL);
   });
 
   it('monthly surplus', () => {

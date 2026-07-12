@@ -34,12 +34,11 @@ export function computeHousingCosts(
   const insuranceMonthly = (homePrice * insuranceRateAnnual) / 12;
   const maintenanceMonthly = (homePrice * maintenanceRateAnnual) / 12;
 
-  const housingTotalMonthly =
-    piMonthly +
-    propertyTaxMonthly +
-    insuranceMonthly +
-    maintenanceMonthly +
-    hoaMonthly;
+  // Lender-style payment (PITIA): excludes maintenance, which lenders don't count.
+  const pitiaMonthly =
+    piMonthly + propertyTaxMonthly + insuranceMonthly + hoaMonthly;
+
+  const housingTotalMonthly = pitiaMonthly + maintenanceMonthly;
 
   return {
     loan_amount: loanAmount,
@@ -48,6 +47,7 @@ export function computeHousingCosts(
     insurance_monthly: insuranceMonthly,
     maintenance_monthly: maintenanceMonthly,
     hoa_monthly: hoaMonthly,
+    pitia_monthly: pitiaMonthly,
     housing_total_monthly: housingTotalMonthly,
   };
 }

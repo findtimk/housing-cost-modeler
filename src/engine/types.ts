@@ -4,7 +4,12 @@ export interface ScenarioInputs {
   // Household / tax
   filing_status: FilingStatus;
   state: string;
-  hhi_annual: number;
+  earner1_wages_annual: number;
+  earner2_wages_annual: number;
+  earner1_pfml_exempt: boolean;
+  earner2_pfml_exempt: boolean;
+  earner1_wa_cares_exempt: boolean;
+  earner2_wa_cares_exempt: boolean;
   pre_tax_retirement_monthly: number;
   after_tax_retirement_monthly: number;
   living_expenses_monthly: number;
@@ -31,9 +36,13 @@ export interface TaxResult {
   federal_tax_annual: number;
 
   ss_tax_annual: number;
+  ss_tax_by_earner: number[];
   medicare_tax_annual: number;
   addl_medicare_tax_annual: number;
   payroll_tax_annual: number;
+
+  pfml_tax_annual: number;
+  wa_cares_tax_annual: number;
 
   adj_wages_for_state: number;
   state_effective_rate: number;
@@ -50,6 +59,8 @@ export interface HousingResult {
   insurance_monthly: number;
   maintenance_monthly: number;
   hoa_monthly: number;
+  /** P&I + property tax + insurance + HOA — the lender-style payment, excludes maintenance. */
+  pitia_monthly: number;
   housing_total_monthly: number;
 }
 
@@ -63,14 +74,18 @@ export interface ScenarioResult {
   after_tax_retirement_monthly: number;
   living_expenses_monthly: number;
   surplus_monthly: number;
-  front_end_ratio: number;
+  /** PITIA / gross — comparable to lender front-end guidelines. */
+  pitia_ratio: number;
+  /** Housing total incl. maintenance / gross — the true cost of ownership. */
+  all_in_ratio: number;
 }
 
 export interface GridCell {
   income: number;
   price: number;
   surplus_monthly: number;
-  front_end_ratio: number;
+  pitia_ratio: number;
+  all_in_ratio: number;
 }
 
 export interface GridResult {
