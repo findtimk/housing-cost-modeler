@@ -50,28 +50,32 @@ describe('computeGrid', () => {
     expect(cell.pitia_ratio).toBeLessThan(cell.all_in_ratio);
   });
 
-  it('grid cell matches a single-earner scenario (its documented approximation)', () => {
-    // The grid treats each cell's income as ONE earner; a scenario with the
-    // same income all on earner 1 must produce the identical surplus.
+  it('grid cell matches scenario detail using the input income split', () => {
     const cell = grid.cells[2][2]; // 500k income, 1.4M price
-    const singleEarner = computeScenario({
-      ...BASE_INPUTS,
-      earner1_wages_annual: 500_000,
-      earner2_wages_annual: 0,
-    });
-    expect(cell.surplus_monthly).toBeCloseTo(singleEarner.surplus_monthly, 2);
-  });
-
-  it('grid approximation shows MORE surplus than the true two-earner split', () => {
-    // One SS/PFML cap on 500k combined vs two caps on 250k/250k:
-    // the grid should look slightly rosier than the per-earner detail view.
-    const cell = grid.cells[2][2];
-    const twoEarners = computeScenario({
+    const splitScenario = computeScenario({
       ...BASE_INPUTS,
       earner1_wages_annual: 250_000,
       earner2_wages_annual: 250_000,
     });
-    expect(cell.surplus_monthly).toBeGreaterThan(twoEarners.surplus_monthly);
+    expect(cell.surplus_monthly).toBeCloseTo(splitScenario.surplus_monthly, 2);
+    expect(cell.pitia_ratio).toBeCloseTo(splitScenario.pitia_ratio, 6);
+    expect(cell.all_in_ratio).toBeCloseTo(splitScenario.all_in_ratio, 6);
+  });
+
+  it('uses the configured income split proportion for each HHI row', () => {
+    const unevenInputs = {
+      ...BASE_INPUTS,
+      earner1_wages_annual: 300_000,
+      earner2_wages_annual: 100_000,
+    };
+    const unevenGrid = computeGrid(unevenInputs, CONFIG);
+    const cell = unevenGrid.cells[2][2]; // 500k income, 1.4M price
+    const splitScenario = computeScenario({
+      ...unevenInputs,
+      earner1_wages_annual: 375_000,
+      earner2_wages_annual: 125_000,
+    });
+    expect(cell.surplus_monthly).toBeCloseTo(splitScenario.surplus_monthly, 2);
   });
 
   it('surplus decreases as price rises and increases with income', () => {

@@ -20,7 +20,7 @@ npm run test:watch # Run tests in watch mode
 - `taxEngine.test.ts` — Federal brackets, per-earner payroll taxes, WA PFML/WA Cares premiums, state tax, edge cases
 - `housingEngine.test.ts` — Mortgage P&I formula, recurring costs, PITIA
 - `cashflowEngine.test.ts` — Pre-tax vs after-tax behavior (AC1), income splitting, legacy-input migration
-- `gridEngine.test.ts` — Grid axes, single-earner approximation vs per-earner detail
+- `gridEngine.test.ts` — Grid axes, proportional income split, scenario/detail alignment
 - `goldenTests.test.ts` — All 4 golden test cases from SPEC (G1-G4)
 
 ## Build for Production
@@ -61,6 +61,6 @@ src/
 - **Engine is pure functions** - no classes, no side effects, no React. Testable and reusable.
 - **Surplus formula** includes pre-tax retirement: `surplus = net_pay - pre_tax_retirement - after_tax_retirement - living_expenses - housing`. This ensures AC1 (pre-tax saves taxes; after-tax does not).
 - **Per-earner income** - Social Security and WA PFML wage-base caps apply per earner; Additional Medicare stays on combined wages (per-return tax). Federal/state income tax is computed on combined income.
-- **Grid caching** - Tax depends only on income; housing depends only on price. Grid computes O(I+P) engine calls instead of O(I*P). The grid uses a single-earner tax approximation per cell; the detail view splits income across earners proportionally, so numbers can differ slightly.
+- **Grid caching** - Tax depends only on HHI; housing depends only on price. Grid computes O(I+P) engine calls instead of O(I*P). Each HHI row is split across earners using the current income profile, so grid cells and scenario detail use the same per-earner tax treatment.
 - **Two ratios** - lender-style PITIA ratio (excludes maintenance) vs all-in ownership ratio; the 28%/36% rule-of-thumb coloring keys off PITIA.
 - **Inputs persist** in localStorage and restore on reload; legacy `hhi_annual` blobs migrate to earner 1.

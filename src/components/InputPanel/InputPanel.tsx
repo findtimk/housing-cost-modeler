@@ -147,8 +147,8 @@ export function InputPanel() {
         </button>
       </div>
 
-      <Section title="Income" hint="Annual wages per earner" icon={UsersIcon}>
-        <Field label="Earner 1 Wages ($/year)">
+      <Section title="Income Profile" hint="How each HHI row is split for taxes" icon={UsersIcon}>
+        <Field label="Earner 1 Baseline ($/year)">
           <FormattedNumberInput
             value={inputs.earner1_wages_annual}
             onChange={update('earner1_wages_annual')}
@@ -156,7 +156,7 @@ export function InputPanel() {
             min={0}
           />
         </Field>
-        <Field label="Earner 2 Wages ($/year)">
+        <Field label="Earner 2 Baseline ($/year)">
           <FormattedNumberInput
             value={inputs.earner2_wages_annual}
             onChange={update('earner2_wages_annual')}
@@ -165,7 +165,8 @@ export function InputPanel() {
           />
         </Field>
         <p className="text-xs text-text-muted">
-          Household total: ${householdTotal.toLocaleString()}
+          Grid rows stay HHI. Each row is split in this proportion for
+          per-earner payroll taxes. Current profile total: ${householdTotal.toLocaleString()}
         </p>
         {inputs.filing_status === 'SINGLE' && inputs.earner2_wages_annual > 0 && (
           <p className="text-xs text-text-muted italic">

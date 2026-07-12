@@ -372,9 +372,8 @@ export function GridView() {
         </div>
       </div>
       <p className="text-xs text-text-muted italic mt-2 px-2">
-        Click any cell for full breakdown. The grid uses a simplified
-        single-earner tax estimate; the detail view splits income across
-        earners, so its numbers may differ slightly.
+        Click any cell for full breakdown. Income rows are household income;
+        the grid applies your income profile split for per-earner payroll taxes.
       </p>
 
       <GridConfigModal />

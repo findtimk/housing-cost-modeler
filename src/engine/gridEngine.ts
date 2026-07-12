@@ -1,6 +1,7 @@
 import type { ScenarioInputs, GridCell, GridResult, GridConfig } from './types.ts';
 import { computeAllTaxes } from './taxEngine.ts';
 import { computeHousingCosts } from './housingEngine.ts';
+import { splitIncome } from './incomeSplit.ts';
 
 /** Generate an array of values from min to max (inclusive) by step. */
 function range(min: number, max: number, step: number): number[] {
@@ -13,7 +14,7 @@ function range(min: number, max: number, step: number): number[] {
 
 /**
  * Compute grid of surplus values.
- * Optimization: tax depends only on income, housing depends only on price.
+ * Optimization: tax depends only on HHI, housing depends only on price.
  * We compute each dimension once, then combine.
  */
 export function computeGrid(
@@ -23,26 +24,35 @@ export function computeGrid(
   const incomes = range(config.income_min, config.income_max, config.income_step);
   const prices = range(config.price_min, config.price_max, config.price_step);
 
-  // Pre-compute taxes per income level.
-  // The grid keeps a single household-income axis, so taxes here use a
-  // single-earner approximation (one SS/PFML cap). The scenario detail view
-  // splits income across earners and may differ slightly.
-  const taxByIncome = incomes.map((income) =>
-    computeAllTaxes({
+  // Pre-compute taxes per household income level using the current income
+  // profile's earner split. This keeps grid cells and scenario detail aligned.
+  const taxByIncome = incomes.map((income) => {
+    const [earner1, earner2] = splitIncome(
+      income,
+      baseInputs.earner1_wages_annual,
+      baseInputs.earner2_wages_annual,
+    );
+
+    return computeAllTaxes({
       filing_status: baseInputs.filing_status,
       state: baseInputs.state,
       earners: [
         {
-          wages: income,
+          wages: earner1,
           pfmlExempt: baseInputs.earner1_pfml_exempt,
           waCaresExempt: baseInputs.earner1_wa_cares_exempt,
+        },
+        {
+          wages: earner2,
+          pfmlExempt: baseInputs.earner2_pfml_exempt,
+          waCaresExempt: baseInputs.earner2_wa_cares_exempt,
         },
       ],
       pre_tax_retirement_monthly: baseInputs.pre_tax_retirement_monthly,
       other_pre_tax_deductions_annual: baseInputs.other_pre_tax_deductions_annual,
       state_effective_rate_override: baseInputs.state_effective_rate_override,
-    }),
-  );
+    });
+  });
 
   // Pre-compute housing per price level
   const housingByPrice = prices.map((price) =>
