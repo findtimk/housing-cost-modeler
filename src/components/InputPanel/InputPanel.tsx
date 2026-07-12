@@ -15,6 +15,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 const STATES = Object.keys(STATE_EFFECTIVE_RATES).sort();
+const SPLIT_BASIS = 100_000;
 
 function Section({
   title,
@@ -131,8 +132,30 @@ export function InputPanel() {
   const update = <K extends keyof ScenarioInputs>(key: K) => (value: ScenarioInputs[K]) =>
     updateInput(key, value);
 
-  const householdTotal = inputs.earner1_wages_annual + inputs.earner2_wages_annual;
+  const splitTotal = inputs.earner1_wages_annual + inputs.earner2_wages_annual;
+  const isSingleEarner = inputs.earner2_wages_annual <= 0 || splitTotal <= 0;
+  const earner1Share = isSingleEarner
+    ? 100
+    : Math.round((inputs.earner1_wages_annual / splitTotal) * 100);
+  const earner2Share = 100 - earner1Share;
   const isWA = inputs.state === 'WA';
+
+  const setIncomeProfile = (profile: 'single' | 'dual') => {
+    if (profile === 'single') {
+      updateInput('earner1_wages_annual', SPLIT_BASIS);
+      updateInput('earner2_wages_annual', 0);
+      return;
+    }
+
+    const nextShare = isSingleEarner ? 50 : earner1Share;
+    updateInput('earner1_wages_annual', SPLIT_BASIS * (nextShare / 100));
+    updateInput('earner2_wages_annual', SPLIT_BASIS * ((100 - nextShare) / 100));
+  };
+
+  const setEarner1Share = (share: number) => {
+    updateInput('earner1_wages_annual', SPLIT_BASIS * (share / 100));
+    updateInput('earner2_wages_annual', SPLIT_BASIS * ((100 - share) / 100));
+  };
 
   return (
     <div className="h-full overflow-y-auto p-4 space-y-1">
@@ -148,25 +171,41 @@ export function InputPanel() {
       </div>
 
       <Section title="Income Profile" hint="How each HHI row is split for taxes" icon={UsersIcon}>
-        <Field label="Earner 1 Baseline ($/year)">
-          <FormattedNumberInput
-            value={inputs.earner1_wages_annual}
-            onChange={update('earner1_wages_annual')}
-            prefix="$"
-            min={0}
-          />
+        <Field label="Profile Type">
+          <select
+            className="w-full border border-border-subtle rounded-lg px-3 py-2.5 text-base min-h-[44px] bg-white text-text-primary focus:outline-none focus:border-brand-teal focus:ring-1 focus:ring-brand-teal/30 transition-all"
+            value={isSingleEarner ? 'single' : 'dual'}
+            onChange={(e) => setIncomeProfile(e.target.value as 'single' | 'dual')}
+          >
+            <option value="single">Single earner</option>
+            <option value="dual">Two earners</option>
+          </select>
         </Field>
-        <Field label="Earner 2 Baseline ($/year)">
-          <FormattedNumberInput
-            value={inputs.earner2_wages_annual}
-            onChange={update('earner2_wages_annual')}
-            prefix="$"
-            min={0}
-          />
-        </Field>
+        {!isSingleEarner && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm font-medium text-text-primary">
+              <span>Earner 1 Share</span>
+              <span className="tabular-nums text-brand-navy">{earner1Share}%</span>
+            </div>
+            <input
+              type="range"
+              min={5}
+              max={95}
+              step={5}
+              value={earner1Share}
+              onChange={(e) => setEarner1Share(Number(e.target.value))}
+              className="w-full accent-brand-teal"
+              aria-label="Earner 1 income share"
+            />
+            <div className="flex justify-between text-xs text-text-muted tabular-nums">
+              <span>Earner 1 {earner1Share}%</span>
+              <span>Earner 2 {earner2Share}%</span>
+            </div>
+          </div>
+        )}
         <p className="text-xs text-text-muted">
-          Grid rows stay HHI. Each row is split in this proportion for
-          per-earner payroll taxes. Current profile total: ${householdTotal.toLocaleString()}
+          Grid rows stay HHI. This profile only controls how each HHI row is
+          split for per-earner payroll taxes.
         </p>
         {inputs.filing_status === 'SINGLE' && inputs.earner2_wages_annual > 0 && (
           <p className="text-xs text-text-muted italic">
