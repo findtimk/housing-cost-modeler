@@ -2,6 +2,11 @@ import { useMemo } from 'react';
 import { useAppContext } from '../../context/AppContext.tsx';
 import { computeScenario } from '../../engine/cashflowEngine.ts';
 import { splitIncome } from '../../engine/incomeSplit.ts';
+import {
+  computeExpenseBucketTotal,
+  getActiveExpenseScenario,
+  isCategoryExpenseMode,
+} from '../../engine/expenseBuilder.ts';
 import { fmtCurrency, fmtPercent } from '../shared/formatters.ts';
 import {
   ArrowLeftIcon,
@@ -139,6 +144,33 @@ function BreakdownRow({
     >
       <span>{label}</span>
       <span className={`tabular-nums ${highlight ? 'font-bold' : indent ? '' : 'font-bold'}`}>{value}</span>
+    </div>
+  );
+}
+
+function ExpenseBucketSummary({ result }: { result: ReturnType<typeof computeScenario> }) {
+  if (!isCategoryExpenseMode(result.inputs.expense_builder)) return null;
+
+  const scenario = getActiveExpenseScenario(result.inputs.expense_builder);
+  if (!scenario) return null;
+
+  return (
+    <div className="ml-4 my-1 rounded-lg bg-surface-warm border border-border-subtle px-3 py-2">
+      <div className="text-[11px] font-semibold uppercase tracking-wider text-text-muted mb-1">
+        Built from categories
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+        {scenario.buckets.map((bucket) => {
+          const total = computeExpenseBucketTotal(bucket);
+          if (total <= 0) return null;
+          return (
+            <div key={bucket.id} className="flex justify-between py-0.5 text-xs text-text-secondary">
+              <span>{bucket.label}</span>
+              <span className="tabular-nums font-semibold text-text-primary">{fmtCurrency(total)}</span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -284,10 +316,11 @@ export function ScenarioView() {
         <BreakdownRow label="− Pre-tax Retirement" value={fmtCurrency(result.inputs.pre_tax_retirement_monthly)} indent />
         <BreakdownRow label="− Taxes (on reduced income)" value={fmtCurrency(result.tax.taxes_monthly)} indent />
         <div className="border-t border-border-subtle mt-2 pt-2">
-          <BreakdownRow label="= Take-home Pay" value={fmtCurrency(result.gross_monthly - result.inputs.pre_tax_retirement_monthly - result.tax.taxes_monthly)} />
+        <BreakdownRow label="= Take-home Pay" value={fmtCurrency(result.gross_monthly - result.inputs.pre_tax_retirement_monthly - result.tax.taxes_monthly)} />
         </div>
         <BreakdownRow label="− After-tax Savings" value={fmtCurrency(result.after_tax_retirement_monthly)} indent />
         <BreakdownRow label="− Living Expenses" value={fmtCurrency(result.living_expenses_monthly)} indent />
+        <ExpenseBucketSummary result={result} />
         <BreakdownRow label="− Housing" value={fmtCurrency(result.housing.housing_total_monthly)} indent />
         <div className="border-t border-border-subtle mt-2 pt-3">
           <div className="flex justify-between py-1.5">

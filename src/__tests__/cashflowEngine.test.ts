@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { computeScenario } from '../engine/cashflowEngine.ts';
 import { splitIncome } from '../engine/incomeSplit.ts';
+import { createDefaultExpenseBuilder, syncLivingExpensesFromBuilder } from '../engine/expenseBuilder.ts';
 import { migrateInputs, DEFAULT_INPUTS } from '../components/InputPanel/defaults.ts';
 import type { ScenarioInputs } from '../engine/types.ts';
 
@@ -62,6 +63,22 @@ describe('computeScenario', () => {
   it('ratios are equal when maintenance is zero', () => {
     const result = computeScenario(makeInputs({ maintenance_rate_annual: 0 }));
     expect(result.pitia_ratio).toBeCloseTo(result.all_in_ratio, 6);
+  });
+
+  it('treats category-derived living expenses like the same manual amount', () => {
+    const categoryInputs = syncLivingExpensesFromBuilder(
+      makeInputs({
+        expense_builder: createDefaultExpenseBuilder('categories', 'with_child'),
+      }),
+    );
+    const manualInputs = makeInputs({
+      living_expenses_monthly: categoryInputs.living_expenses_monthly,
+    });
+
+    expect(computeScenario(categoryInputs).surplus_monthly).toBeCloseTo(
+      computeScenario(manualInputs).surplus_monthly,
+      2,
+    );
   });
 });
 

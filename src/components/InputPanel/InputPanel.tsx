@@ -1,11 +1,16 @@
 import { useState } from 'react';
 import { useAppContext } from '../../context/AppContext.tsx';
 import type { FilingStatus, ScenarioInputs } from '../../engine/types.ts';
+import {
+  getActiveExpenseScenario,
+  isCategoryExpenseMode,
+} from '../../engine/expenseBuilder.ts';
 import { STATE_EFFECTIVE_RATES } from '../../engine/taxConstants2026.ts';
 import { FormattedNumberInput } from '../shared/FormattedNumberInput.tsx';
 import {
   BanknotesIcon,
   ShoppingCartIcon,
+  CalculatorIcon,
   ReceiptPercentIcon,
   HomeModernIcon,
   ChevronDownIcon,
@@ -127,10 +132,20 @@ function Checkbox({
 }
 
 export function InputPanel() {
-  const { inputs, updateInput, resetDefaults } = useAppContext();
+  const {
+    inputs,
+    setInputs,
+    updateInput,
+    resetDefaults,
+    setExpenseBuilderOpen,
+  } = useAppContext();
+  const [pendingManualExpense, setPendingManualExpense] = useState<number | null>(null);
 
   const update = <K extends keyof ScenarioInputs>(key: K) => (value: ScenarioInputs[K]) =>
     updateInput(key, value);
+
+  const categoryMode = isCategoryExpenseMode(inputs.expense_builder);
+  const activeExpenseScenario = getActiveExpenseScenario(inputs.expense_builder);
 
   const splitTotal = inputs.earner1_wages_annual + inputs.earner2_wages_annual;
   const isSingleEarner = inputs.earner2_wages_annual <= 0 || splitTotal <= 0;
@@ -139,6 +154,31 @@ export function InputPanel() {
     : Math.round((inputs.earner1_wages_annual / splitTotal) * 100);
   const earner2Share = 100 - earner1Share;
   const isWA = inputs.state === 'WA';
+
+  const updateLivingExpenses = (value: number) => {
+    if (categoryMode) {
+      setPendingManualExpense(value);
+      return;
+    }
+    updateInput('living_expenses_monthly', value);
+  };
+
+  const switchToManualExpenses = () => {
+    if (pendingManualExpense === null) return;
+    setInputs({
+      ...inputs,
+      living_expenses_monthly: pendingManualExpense,
+      expense_builder: inputs.expense_builder
+        ? {
+            ...inputs.expense_builder,
+            mode: 'manual',
+            last_manual_living_expenses_monthly: pendingManualExpense,
+            source: 'user_edited',
+          }
+        : undefined,
+    });
+    setPendingManualExpense(null);
+  };
 
   const setIncomeProfile = (profile: 'single' | 'dual') => {
     if (profile === 'single') {
@@ -269,11 +309,53 @@ export function InputPanel() {
         <Field label="Living Expenses ($/month)">
           <FormattedNumberInput
             value={inputs.living_expenses_monthly}
-            onChange={update('living_expenses_monthly')}
+            onChange={updateLivingExpenses}
             prefix="$"
             min={0}
           />
         </Field>
+        <div className="rounded-lg border border-border-subtle bg-white px-3 py-2">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-xs font-medium text-text-primary">
+                {categoryMode ? 'Built from categories' : 'Manual estimate'}
+              </div>
+              <div className="text-[11px] text-text-muted mt-0.5">
+                {categoryMode && activeExpenseScenario
+                  ? `${activeExpenseScenario.label} expense plan`
+                  : 'Use the builder for category detail'}
+              </div>
+            </div>
+            <button
+              onClick={() => setExpenseBuilderOpen(true)}
+              className="inline-flex items-center gap-1.5 shrink-0 text-xs font-semibold text-brand-teal hover:text-brand-teal-dark"
+            >
+              <CalculatorIcon className="w-4 h-4" />
+              Build
+            </button>
+          </div>
+        </div>
+        {pendingManualExpense !== null && (
+          <div className="rounded-lg border border-brand-amber/30 bg-brand-amber-light px-3 py-2 space-y-2">
+            <p className="text-xs text-brand-amber">
+              Editing the total will switch living expenses back to a manual estimate.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={switchToManualExpenses}
+                className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-brand-amber text-white hover:bg-brand-amber/90 transition-colors"
+              >
+                Switch to manual
+              </button>
+              <button
+                onClick={() => setPendingManualExpense(null)}
+                className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-white text-text-secondary border border-border-subtle hover:text-text-primary transition-colors"
+              >
+                Keep categories
+              </button>
+            </div>
+          </div>
+        )}
       </Section>
 
       <Section title="Tax Settings" hint="Filing status & deductions" icon={ReceiptPercentIcon} defaultOpen={false}>

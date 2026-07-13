@@ -140,37 +140,6 @@ function getCellStyle(
   return getRatioStyle(getMetricValue(cell, metric));
 }
 
-function isPassing(cell: GridCell, metric: GridMetric, threshold: number): boolean {
-  if (metric === 'surplus') return cell.surplus_monthly >= threshold;
-  return getMetricValue(cell, metric) <= 0.28;
-}
-
-function hasBoundaryBelow(
-  cells: GridCell[][],
-  row: number,
-  col: number,
-  metric: GridMetric,
-  threshold: number,
-): boolean {
-  const current = cells[row][col];
-  if (!isPassing(current, metric, threshold)) return false;
-  const below = cells[row + 1]?.[col];
-  return below ? !isPassing(below, metric, threshold) : false;
-}
-
-function hasBoundaryRight(
-  cells: GridCell[][],
-  row: number,
-  col: number,
-  metric: GridMetric,
-  threshold: number,
-): boolean {
-  const current = cells[row][col];
-  if (!isPassing(current, metric, threshold)) return false;
-  const right = cells[row]?.[col + 1];
-  return right ? !isPassing(right, metric, threshold) : false;
-}
-
 function formatCellValue(cell: GridCell, metric: GridMetric): string {
   if (metric === 'surplus') return fmtCurrency(cell.surplus_monthly);
   return fmtPercent(getMetricValue(cell, metric));
@@ -208,25 +177,14 @@ export function GridView() {
   }, [grid.cells, gridConfig.surplus_threshold]);
 
   return (
-    <div className="space-y-4">
-      {/* Explainer Box */}
-      <div className="bg-white border border-border-subtle rounded-xl p-5 shadow-sm">
-        <div className="flex justify-between items-start">
-          <p className="text-sm text-text-secondary leading-relaxed">
-            <strong className="text-brand-navy font-semibold">Find your comfort zone</strong> — each cell shows how much money you'd have left each month after mortgage, taxes, insurance, retirement, and living costs. Green means the surplus meets your target. Red means over budget. Click any cell for the full breakdown.
+    <div className="h-full min-h-0 flex flex-col gap-3">
+      <div className="bg-white border border-border-subtle rounded-xl px-4 py-3 shadow-sm shrink-0">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-text-secondary leading-snug min-w-[260px] flex-1">
+            <strong className="text-brand-navy font-semibold">Find your comfort zone</strong>
+            {' '}— each cell shows surplus, PITIA, or all-in ratio. Click any cell for the full breakdown.
           </p>
-          <button
-            onClick={toggleGridConfig}
-            className="p-2 rounded-lg hover:bg-surface-warm text-text-secondary hover:text-brand-navy transition-colors ml-3 shrink-0"
-            title="Grid Settings"
-          >
-            <Cog6ToothIcon className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex bg-white rounded-xl p-1 shadow-sm border border-border-subtle">
+          <div className="inline-flex bg-surface-warm rounded-xl p-1 border border-border-subtle">
           {GRID_METRICS.map((item) => (
             <button
               key={item.id}
@@ -241,27 +199,37 @@ export function GridView() {
               {item.label}
             </button>
           ))}
-        </div>
-        <div className="text-xs text-text-muted">
-          {metric === 'surplus'
-            ? `Target: ${fmtCurrency(gridConfig.surplus_threshold)}/mo`
-            : 'Green <= 28% PITIA guideline'}
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-xs text-text-muted whitespace-nowrap">
+              {metric === 'surplus'
+                ? `Target: ${fmtCurrency(gridConfig.surplus_threshold)}/mo`
+                : 'Green <= 28% PITIA guideline'}
+            </div>
+            <button
+              onClick={toggleGridConfig}
+              className="p-2 rounded-lg hover:bg-surface-warm text-text-secondary hover:text-brand-navy transition-colors shrink-0"
+              title="Grid Settings"
+            >
+              <Cog6ToothIcon className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Grid Table */}
-      <div className="bg-white rounded-xl border border-border-subtle shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-border-subtle shadow-sm overflow-hidden shrink-0">
         <div className="overflow-x-auto">
           <table className="text-sm border-collapse w-full">
             <thead>
               <tr>
-                <th className="px-4 py-3 text-left bg-surface-sidebar text-xs font-semibold uppercase text-text-secondary sticky left-0 z-20 border-b border-r border-border-subtle">
+                <th className="px-4 py-2 text-left bg-surface-sidebar text-xs font-semibold uppercase text-text-secondary sticky left-0 top-0 z-30 border-b border-r border-border-subtle">
                   Income \ Price
                 </th>
                 {grid.prices.map((price, j) => (
                   <th
                     key={price}
-                    className={`px-4 py-3 text-right bg-surface-sidebar text-xs font-semibold text-text-secondary whitespace-nowrap border-b border-border-subtle ${
+                    className={`px-4 py-2 text-right bg-surface-sidebar text-xs font-semibold text-text-secondary whitespace-nowrap border-b border-border-subtle sticky top-0 z-20 ${
                       hoveredCell?.col === j ? 'bg-brand-navy/[0.03]' : ''
                     }`}
                   >
@@ -273,7 +241,7 @@ export function GridView() {
             <tbody>
               {grid.incomes.map((income, i) => (
                 <tr key={income}>
-                  <td className={`px-4 py-3 font-semibold bg-surface-sidebar text-sm text-brand-navy whitespace-nowrap sticky left-0 z-10 border-r border-border-subtle ${
+                  <td className={`px-4 py-2 font-semibold bg-surface-sidebar text-sm text-brand-navy whitespace-nowrap sticky left-0 z-10 border-r border-border-subtle ${
                     hoveredCell?.row === i ? 'bg-brand-navy/[0.03]' : ''
                   }`}>
                     ${fmtNumber(income)}
@@ -282,20 +250,6 @@ export function GridView() {
                     const isHovered = hoveredCell?.row === i && hoveredCell?.col === j;
                     const isInHoveredRow = hoveredCell?.row === i;
                     const isInHoveredCol = hoveredCell?.col === j;
-                    const boundaryRight = hasBoundaryRight(
-                      grid.cells,
-                      i,
-                      j,
-                      metric,
-                      gridConfig.surplus_threshold,
-                    );
-                    const boundaryBelow = hasBoundaryBelow(
-                      grid.cells,
-                      i,
-                      j,
-                      metric,
-                      gridConfig.surplus_threshold,
-                    );
                     const cellStyle = getCellStyle(
                       cell,
                       metric,
@@ -307,14 +261,10 @@ export function GridView() {
                     return (
                       <td
                         key={grid.prices[j]}
-                        className={`px-4 py-3 text-right font-semibold tabular-nums cursor-pointer transition-all duration-150 ${
+                        className={`px-4 py-2 text-right font-semibold tabular-nums cursor-pointer transition-all duration-150 ${
                           isHovered ? 'ring-2 ring-brand-navy/20 ring-inset z-10 relative' : ''
                         } ${
                           (isInHoveredRow || isInHoveredCol) && !isHovered ? 'brightness-95' : ''
-                        } ${
-                          boundaryRight ? 'border-r-2 border-r-brand-navy/10' : ''
-                        } ${
-                          boundaryBelow ? 'border-b-2 border-b-brand-navy/10' : ''
                         }`}
                         style={cellStyle}
                         onClick={() => selectCell(cell.income, cell.price)}
@@ -323,7 +273,7 @@ export function GridView() {
                         title={`Income: $${fmtNumber(income)}, Price: $${fmtNumber(grid.prices[j])}\nSurplus: ${fmtCurrency(cell.surplus_monthly)}/mo\nPITIA: ${fmtPercent(cell.pitia_ratio)}\nAll-in: ${fmtPercent(cell.all_in_ratio)}`}
                       >
                         <div>{formatCellValue(cell, metric)}</div>
-                        <div className="hidden xl:block text-[11px] font-medium opacity-70 mt-0.5">
+                        <div className="hidden xl:block text-[10px] font-medium opacity-70">
                           {formatSecondaryValue(cell, metric)}
                         </div>
                       </td>
@@ -337,8 +287,8 @@ export function GridView() {
       </div>
 
       {/* Legend */}
-      <div className="mt-4 px-2 max-w-xl">
-        <div className="flex items-center gap-4">
+      <div className="px-2 max-w-xl shrink-0">
+        <div className="flex items-center gap-3">
           <span className="text-xs font-medium text-brand-teal-dark">
             {metric === 'surplus' ? 'More cushion' : 'Lower ratio'}
           </span>
@@ -371,7 +321,7 @@ export function GridView() {
           )}
         </div>
       </div>
-      <p className="text-xs text-text-muted italic mt-2 px-2">
+      <p className="text-xs text-text-muted italic px-2 shrink-0">
         Click any cell for full breakdown. Income rows are household income;
         the grid applies your income profile split for per-earner payroll taxes.
       </p>

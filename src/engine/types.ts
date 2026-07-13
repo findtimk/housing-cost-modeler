@@ -13,6 +13,7 @@ export interface ScenarioInputs {
   pre_tax_retirement_monthly: number;
   after_tax_retirement_monthly: number;
   living_expenses_monthly: number;
+  expense_builder?: ExpenseBuilderState;
   other_pre_tax_deductions_annual: number;
   state_effective_rate_override?: number;
 
@@ -25,6 +26,41 @@ export interface ScenarioInputs {
   insurance_rate_annual: number;
   maintenance_rate_annual: number;
   hoa_monthly: number;
+}
+
+export type ExpenseMode = 'manual' | 'categories';
+export type ExpenseScenarioId = 'current' | 'with_child' | 'custom';
+
+export interface ExpenseLineItem {
+  id: string;
+  label: string;
+  amount_monthly: number;
+  enabled: boolean;
+  is_default: boolean;
+  is_custom: boolean;
+}
+
+export interface ExpenseBucket {
+  id: string;
+  label: string;
+  description?: string;
+  expanded: boolean;
+  items: ExpenseLineItem[];
+}
+
+export interface ExpenseScenario {
+  id: ExpenseScenarioId | string;
+  label: string;
+  buckets: ExpenseBucket[];
+}
+
+export interface ExpenseBuilderState {
+  mode: ExpenseMode;
+  active_scenario_id: string;
+  scenarios: ExpenseScenario[];
+  last_manual_living_expenses_monthly: number;
+  ytd_months_assumption: number;
+  source: 'defaults' | 'user_edited';
 }
 
 export interface TaxResult {

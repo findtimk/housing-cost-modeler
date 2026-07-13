@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { ScenarioInputs, GridConfig } from '../engine/types.ts';
-import { DEFAULT_INPUTS, DEFAULT_GRID_CONFIG, migrateInputs } from '../components/InputPanel/defaults.ts';
+import { DEFAULT_GRID_CONFIG, createDefaultInputs, migrateInputs } from '../components/InputPanel/defaults.ts';
+import { syncLivingExpensesFromBuilder } from '../engine/expenseBuilder.ts';
 
 const STORAGE_KEY = 'home-affordability-inputs';
 const GRID_STORAGE_KEY = 'home-affordability-grid-config';
@@ -10,7 +11,7 @@ function loadInputs(): ScenarioInputs {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) return migrateInputs(JSON.parse(saved));
   } catch { /* ignore */ }
-  return { ...DEFAULT_INPUTS };
+  return createDefaultInputs();
 }
 
 function loadGridConfig(): GridConfig {
@@ -33,6 +34,7 @@ interface AppState {
   mobileTab: MobileTab;
   inputDrawerOpen: boolean;
   gridConfigOpen: boolean;
+  expenseBuilderOpen: boolean;
 }
 
 interface AppContextValue extends AppState {
@@ -47,6 +49,7 @@ interface AppContextValue extends AppState {
   setMobileTab: (tab: MobileTab) => void;
   setInputDrawerOpen: (open: boolean) => void;
   toggleGridConfig: () => void;
+  setExpenseBuilderOpen: (open: boolean) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -60,6 +63,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [mobileTab, setMobileTab] = useState<MobileTab>('grid');
   const [inputDrawerOpen, setInputDrawerOpen] = useState(false);
   const [gridConfigOpen, setGridConfigOpen] = useState(false);
+  const [expenseBuilderOpen, setExpenseBuilderOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(inputs));
@@ -70,11 +74,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [gridConfig]);
 
   const setInputs = useCallback((newInputs: ScenarioInputs) => {
-    setInputsState(newInputs);
+    setInputsState(syncLivingExpensesFromBuilder(newInputs));
   }, []);
 
   const updateInput = useCallback(<K extends keyof ScenarioInputs>(key: K, value: ScenarioInputs[K]) => {
-    setInputsState((prev) => ({ ...prev, [key]: value }));
+    setInputsState((prev) => syncLivingExpensesFromBuilder({ ...prev, [key]: value }));
   }, []);
 
   const setGridConfig = useCallback((config: GridConfig) => {
@@ -100,7 +104,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const resetDefaults = useCallback(() => {
-    setInputsState({ ...DEFAULT_INPUTS });
+    setInputsState(createDefaultInputs());
     setGridConfigState({ ...DEFAULT_GRID_CONFIG });
   }, []);
 
@@ -114,6 +118,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         auditOpen,
         mobileTab,
         inputDrawerOpen,
+        expenseBuilderOpen,
         setInputs,
         updateInput,
         setGridConfig,
@@ -126,6 +131,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setInputDrawerOpen,
         gridConfigOpen,
         toggleGridConfig,
+        setExpenseBuilderOpen,
       }}
     >
       {children}

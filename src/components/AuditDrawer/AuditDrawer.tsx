@@ -3,6 +3,10 @@ import { useAppContext } from '../../context/AppContext.tsx';
 import { useBreakpoint } from '../../hooks/useBreakpoint.ts';
 import { computeScenario } from '../../engine/cashflowEngine.ts';
 import { splitIncome } from '../../engine/incomeSplit.ts';
+import {
+  getExpenseBuilderSummary,
+  isCategoryExpenseMode,
+} from '../../engine/expenseBuilder.ts';
 import { fmtCurrencyExact, fmtPercentExact, fmtRate } from '../shared/formatters.ts';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
@@ -68,6 +72,8 @@ export function AuditDrawer() {
   if (!auditOpen) return null;
 
   const isFullScreen = breakpoint === 'mobile' || breakpoint === 'tablet';
+  const expenseSummary = getExpenseBuilderSummary(r.inputs.expense_builder);
+  const categoryExpenses = isCategoryExpenseMode(r.inputs.expense_builder);
 
   return (
     <>
@@ -291,7 +297,22 @@ export function AuditDrawer() {
         <AuditRow
           label="Living Expenses (monthly)"
           value={fmtCurrencyExact(r.living_expenses_monthly)}
+          formula={categoryExpenses ? '= sum(enabled expense categories)' : '= manual input'}
         />
+        {categoryExpenses && (
+          <>
+            <AuditRow
+              label="Actual Spending Subtotal"
+              value={fmtCurrencyExact(expenseSummary.actualTotal)}
+            />
+            {expenseSummary.childTotal > 0 && (
+              <AuditRow
+                label="Child / Family Subtotal"
+                value={fmtCurrencyExact(expenseSummary.childTotal)}
+              />
+            )}
+          </>
+        )}
         <AuditRow
           label="Monthly Surplus"
           value={fmtCurrencyExact(r.surplus_monthly)}

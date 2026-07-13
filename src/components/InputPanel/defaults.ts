@@ -1,4 +1,9 @@
 import type { ScenarioInputs } from '../../engine/types.ts';
+import {
+  createDefaultExpenseBuilder,
+  ensureExpenseBuilder,
+  syncLivingExpensesFromBuilder,
+} from '../../engine/expenseBuilder.ts';
 
 export const DEFAULT_INPUTS: ScenarioInputs = {
   filing_status: 'MFJ',
@@ -11,7 +16,8 @@ export const DEFAULT_INPUTS: ScenarioInputs = {
   earner2_wa_cares_exempt: false,
   pre_tax_retirement_monthly: 4_000,
   after_tax_retirement_monthly: 0,
-  living_expenses_monthly: 9_500,
+  living_expenses_monthly: 9_200,
+  expense_builder: createDefaultExpenseBuilder('categories', 'with_child', 9_500),
   other_pre_tax_deductions_annual: 0,
 
   home_price: 1_400_000,
@@ -24,6 +30,13 @@ export const DEFAULT_INPUTS: ScenarioInputs = {
   hoa_monthly: 0,
 };
 
+export function createDefaultInputs(): ScenarioInputs {
+  return syncLivingExpensesFromBuilder({
+    ...DEFAULT_INPUTS,
+    expense_builder: createDefaultExpenseBuilder('categories', 'with_child', 9_500),
+  });
+}
+
 /**
  * Merge saved (possibly legacy) inputs with defaults.
  * Legacy blobs stored a single combined `hhi_annual`; map it to earner 1
@@ -32,7 +45,7 @@ export const DEFAULT_INPUTS: ScenarioInputs = {
 export function migrateInputs(saved: unknown): ScenarioInputs {
   const savedObj =
     saved && typeof saved === 'object' ? (saved as Record<string, unknown>) : {};
-  const merged = { ...DEFAULT_INPUTS, ...savedObj } as ScenarioInputs &
+  const merged = { ...createDefaultInputs(), ...savedObj } as ScenarioInputs &
     Record<string, unknown>;
 
   if (
@@ -44,7 +57,7 @@ export function migrateInputs(saved: unknown): ScenarioInputs {
   }
   delete merged.hhi_annual;
 
-  return merged as ScenarioInputs;
+  return ensureExpenseBuilder(merged as ScenarioInputs, savedObj.expense_builder === undefined);
 }
 
 export const DEFAULT_GRID_CONFIG = {
