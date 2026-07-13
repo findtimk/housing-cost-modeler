@@ -1,6 +1,6 @@
 # Home Affordability Modeler — SPEC (v2)
 
-**Last updated:** 2026-07-11
+**Last updated:** 2026-07-13
 
 This spec defines the **exact formulas**, **constants**, **rounding rules**, and **golden test cases** for v2 (per-earner wages, WA payroll programs, dual ratios).
 
@@ -30,7 +30,8 @@ This spec defines the **exact formulas**, **constants**, **rounding rules**, and
 - `earner1_wa_cares_exempt`, `earner2_wa_cares_exempt`: boolean
 - `pre_tax_retirement_monthly`: number (USD / month)
 - `after_tax_retirement_monthly`: number (USD / month)
-- `living_expenses_monthly`: number (USD / month)
+- `living_expenses_monthly`: number (USD / month). Can be entered manually or derived from the active expense-builder scenario.
+- `expense_builder` (optional): category-based non-housing expense plan state. Existing saved inputs without this object remain in manual mode.
 - `other_pre_tax_deductions_annual` (optional): number (USD / year, default 0)
 - `state_effective_rate_override` (optional): number (0–1). If present, overrides state lookup.
 
@@ -180,6 +181,50 @@ Equivalently: `surplus = gross − taxes − pre-tax retirement − after-tax sa
 ### 6.3 Ratios (display metrics)
 - `pitia_ratio = pitia_monthly / gross_monthly` — comparable to lender front-end guidelines (the common 28% rule of thumb applies to this number)
 - `all_in_ratio = housing_total_monthly / gross_monthly` — true cost of ownership including maintenance
+
+### 6.4 Living expense builder
+`living_expenses_monthly` remains the only value consumed by the tax, housing, grid, and cashflow engines. The expense builder is a UI/state layer that can derive that value from an active category scenario:
+
+- `Current`: visible actual non-housing spending categories from the YTD snapshot, rounded to planning-friendly monthly defaults.
+- `With child`: `Current` plus a child/family add-on.
+- `Custom`: editable copy seeded from the with-child plan.
+
+Default current category plan:
+
+| Bucket | Monthly Default |
+|---|---:|
+| Travel | $2,000 |
+| Food | $1,225 |
+| Transportation | $1,100 |
+| Home & utilities | $250 |
+| Health & personal | $150 |
+| Lifestyle & gifts | $675 |
+| Financial & admin | $100 |
+| Other | $50 |
+
+Default child/family add-on:
+
+| Line Item | Monthly Default |
+|---|---:|
+| Daycare | $3,500 |
+| Child supplies | $250 |
+| Babysitting / backup care | $300 |
+| Child medical | $150 |
+| Activities / classes | $150 |
+| Education savings | $250 |
+
+Default totals:
+
+- `Current`: $5,550/mo
+- Child/family add-on: $4,600/mo
+- `With child`: $10,150/mo
+
+Builder rules:
+
+- In category mode, `living_expenses_monthly = sum(enabled line item amount_monthly)` for the active scenario.
+- In manual mode, the user's manual `living_expenses_monthly` is preserved and the category plan is not used by calculations.
+- Users can add custom line items inside existing buckets; custom top-level buckets are not modeled in v2.
+- Category-builder state persists in localStorage with the rest of `ScenarioInputs`.
 
 ---
 
