@@ -10,7 +10,7 @@ import { ExpenseBuilderModal } from './ExpenseBuilderModal';
 import { HomeIcon, Bars3Icon } from '@heroicons/react/24/outline';
 
 export function App() {
-  const { activeView, setActiveView, mobileTab, setInputDrawerOpen } = useAppContext();
+  const { activeView, mobileTab, setInputDrawerOpen } = useAppContext();
   const breakpoint = useBreakpoint();
 
   // Desktop layout (≥1024px)
@@ -31,30 +31,6 @@ export function App() {
 
         {/* Main Panel: Grid or Scenario */}
         <main className="flex-1 overflow-hidden p-4 flex flex-col min-w-0">
-          {/* View Tabs - Pill Style */}
-          <div className="self-start inline-flex bg-white rounded-xl p-1 shadow-sm border border-border-subtle mb-3 shrink-0">
-            <button
-              className={`px-5 py-2 text-sm font-medium rounded-lg transition-all ${
-                activeView === 'grid'
-                  ? 'bg-brand-navy text-white shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-warm'
-              }`}
-              onClick={() => setActiveView('grid')}
-            >
-              Grid
-            </button>
-            <button
-              className={`px-5 py-2 text-sm font-medium rounded-lg transition-all ${
-                activeView === 'scenario'
-                  ? 'bg-brand-navy text-white shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-warm'
-              }`}
-              onClick={() => setActiveView('scenario')}
-            >
-              Scenario
-            </button>
-          </div>
-
           <div className="flex-1 min-h-0">
             {activeView === 'grid' ? <GridView /> : <ScenarioView />}
           </div>
@@ -85,30 +61,6 @@ export function App() {
 
         {/* Main content */}
         <main className="flex-1 overflow-auto p-4">
-          {/* View Tabs - Pill Style */}
-          <div className="inline-flex bg-white rounded-xl p-1 shadow-sm border border-border-subtle mb-4">
-            <button
-              className={`px-5 py-2 text-sm font-medium rounded-lg transition-all ${
-                activeView === 'grid'
-                  ? 'bg-brand-navy text-white shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-warm'
-              }`}
-              onClick={() => setActiveView('grid')}
-            >
-              Grid
-            </button>
-            <button
-              className={`px-5 py-2 text-sm font-medium rounded-lg transition-all ${
-                activeView === 'scenario'
-                  ? 'bg-brand-navy text-white shadow-sm'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-warm'
-              }`}
-              onClick={() => setActiveView('scenario')}
-            >
-              Scenario
-            </button>
-          </div>
-
           {activeView === 'grid' ? <GridView /> : <ScenarioView />}
         </main>
 
