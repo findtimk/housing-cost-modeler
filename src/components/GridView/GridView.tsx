@@ -1,8 +1,15 @@
 import { useMemo, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { useAppContext } from '../../context/AppContext.tsx';
 import { computeGrid } from '../../engine/gridEngine.ts';
+import { computeHousingCosts } from '../../engine/housingEngine.ts';
 import type { GridCell } from '../../engine/types.ts';
-import { fmtCurrency, fmtNumber, fmtPercent } from '../shared/formatters.ts';
+import {
+  fmtCompactCurrency,
+  fmtCurrency,
+  fmtNumber,
+  fmtPercent,
+} from '../shared/formatters.ts';
 import { GridConfigModal } from './GridConfigModal.tsx';
 import { Cog6ToothIcon } from '@heroicons/react/24/outline';
 
@@ -56,42 +63,31 @@ function mixColor(from: string, to: string, amount: number): string {
   ]);
 }
 
-function getSurplusStyle(
-  surplus: number,
-  threshold: number,
-  maxDeficit: number,
-  maxSurplusAboveTarget: number,
-) {
-  if (surplus < 0) {
-    return {
-      backgroundColor: mixColor(
-        COLORS.roseSoft,
-        COLORS.roseStrong,
-        Math.abs(surplus) / Math.max(1, maxDeficit),
-      ),
-      color: COLORS.roseText,
-    };
-  }
+/**
+ * Fixed color anchor: cells reach full teal/rose at ±this monthly surplus,
+ * so the same surplus gets the same color regardless of grid range.
+ */
+const SURPLUS_SCALE_REF = 5_000;
 
-  if (threshold > 0 && surplus < threshold) {
-    return {
-      backgroundColor: mixColor(
-        COLORS.amberStrong,
-        COLORS.amberSoft,
-        surplus / threshold,
-      ),
-      color: COLORS.amberText,
-    };
-  }
+const DIVERGING = {
+  neutral: '#fafaf9',
+  teal: '#5eead4',
+  rose: '#fda4af',
+  ink: '#334155',
+};
 
-  return {
-    backgroundColor: mixColor(
-      COLORS.tealSoft,
-      COLORS.tealStrong,
-      (surplus - Math.max(0, threshold)) / Math.max(1, maxSurplusAboveTarget),
-    ),
-    color: COLORS.tealText,
-  };
+function getSurplusStyle(surplus: number, threshold: number) {
+  const intensity = clamp(Math.abs(surplus) / SURPLUS_SCALE_REF);
+  const backgroundColor =
+    surplus >= 0
+      ? mixColor(DIVERGING.neutral, DIVERGING.teal, intensity)
+      : mixColor(DIVERGING.neutral, DIVERGING.rose, intensity);
+
+  const style: CSSProperties = { backgroundColor, color: DIVERGING.ink };
+  if (threshold > 0 && surplus >= 0 && surplus < threshold) {
+    style.boxShadow = `inset 0 -3px 0 0 ${COLORS.amberText}`;
+  }
+  return style;
 }
 
 function getRatioStyle(ratio: number) {
@@ -121,20 +117,9 @@ function getMetricValue(cell: GridCell, metric: GridMetric): number {
   return cell.surplus_monthly;
 }
 
-function getCellStyle(
-  cell: GridCell,
-  metric: GridMetric,
-  threshold: number,
-  maxDeficit: number,
-  maxSurplusAboveTarget: number,
-) {
+function getCellStyle(cell: GridCell, metric: GridMetric, threshold: number) {
   if (metric === 'surplus') {
-    return getSurplusStyle(
-      cell.surplus_monthly,
-      threshold,
-      maxDeficit,
-      maxSurplusAboveTarget,
-    );
+    return getSurplusStyle(cell.surplus_monthly, threshold);
   }
 
   return getRatioStyle(getMetricValue(cell, metric));
@@ -160,21 +145,25 @@ export function GridView() {
     [inputs, gridConfig],
   );
 
-  const colorScale = useMemo(() => {
-    const cells = grid.cells.flat();
-    return {
-      maxDeficit: Math.max(
-        1,
-        ...cells.map((cell) => Math.max(0, -cell.surplus_monthly)),
-      ),
-      maxSurplusAboveTarget: Math.max(
-        1,
-        ...cells.map((cell) =>
-          Math.max(0, cell.surplus_monthly - Math.max(0, gridConfig.surplus_threshold)),
-        ),
-      ),
-    };
-  }, [grid.cells, gridConfig.surplus_threshold]);
+  // Marginal housing cost of one price step — exact and constant because
+  // every price-driven cost (P&I, tax, insurance, maintenance) is linear in price.
+  const marginalCostPerStep = useMemo(
+    () =>
+      computeHousingCosts(
+        gridConfig.price_step,
+        inputs.down_payment_pct,
+        inputs.apr,
+        inputs.term_years,
+        inputs.property_tax_rate_annual,
+        inputs.insurance_rate_annual,
+        inputs.maintenance_rate_annual,
+        0,
+      ).housing_total_monthly,
+    [inputs, gridConfig.price_step],
+  );
+
+  const currentHouseholdIncome =
+    inputs.earner1_wages_annual + inputs.earner2_wages_annual;
 
   return (
     <div className="h-full min-h-0 flex flex-col gap-3">
@@ -182,7 +171,10 @@ export function GridView() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-text-secondary leading-snug min-w-[260px] flex-1">
             <strong className="text-brand-navy font-semibold">Find your comfort zone</strong>
-            {' '}— each cell shows surplus, PITIA, or all-in ratio. Click any cell for the full breakdown.
+            {' '}— each +{fmtCompactCurrency(gridConfig.price_step)} of price costs{' '}
+            <strong className="text-brand-navy font-semibold">
+              ≈ {fmtCurrency(marginalCostPerStep)}/mo
+            </strong>.
           </p>
           <div className="inline-flex bg-surface-warm rounded-xl p-1 border border-border-subtle">
           {GRID_METRICS.map((item) => (
@@ -237,6 +229,41 @@ export function GridView() {
                   </th>
                 ))}
               </tr>
+              <tr>
+                <th className="px-4 py-1.5 text-left bg-surface-sidebar text-[10px] font-semibold uppercase tracking-wider text-text-muted sticky left-0 z-30 border-b border-r border-border-subtle">
+                  Works down to
+                </th>
+                {grid.break_even_incomes.map((breakEven, j) => (
+                  <th
+                    key={grid.prices[j]}
+                    className={`px-4 py-1.5 text-right bg-surface-sidebar text-[11px] font-medium text-text-muted whitespace-nowrap border-b border-border-subtle ${
+                      hoveredCell?.col === j ? 'bg-brand-navy/[0.03]' : ''
+                    }`}
+                    title={`Minimum household income where surplus stays ≥ $0 at this price`}
+                  >
+                    {Number.isFinite(breakEven) ? (
+                      <>
+                        {fmtCompactCurrency(breakEven)}
+                        {currentHouseholdIncome > 0 && (
+                          <span className="ml-1 opacity-70">
+                            ({breakEven <= currentHouseholdIncome ? '−' : '+'}
+                            {Math.abs(
+                              Math.round(
+                                ((breakEven - currentHouseholdIncome) /
+                                  currentHouseholdIncome) *
+                                  100,
+                              ),
+                            )}
+                            %)
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      '—'
+                    )}
+                  </th>
+                ))}
+              </tr>
             </thead>
             <tbody>
               {grid.incomes.map((income, i) => (
@@ -254,8 +281,6 @@ export function GridView() {
                       cell,
                       metric,
                       gridConfig.surplus_threshold,
-                      colorScale.maxDeficit,
-                      colorScale.maxSurplusAboveTarget,
                     );
 
                     return (
@@ -297,7 +322,7 @@ export function GridView() {
             style={{
               background:
                 metric === 'surplus'
-                  ? 'linear-gradient(to right, #99f6e4, #ecfdf5, #fef3c7, #fff1f2, #fecdd3)'
+                  ? `linear-gradient(to right, ${DIVERGING.teal}, ${DIVERGING.neutral}, ${DIVERGING.rose})`
                   : 'linear-gradient(to right, #99f6e4, #ecfdf5, #fef3c7, #fde68a, #fff1f2, #fecdd3)',
             }}
           />
@@ -308,9 +333,9 @@ export function GridView() {
         <div className="flex justify-between text-[11px] text-text-muted mt-1">
           {metric === 'surplus' ? (
             <>
-              <span>Meets target</span>
+              <span>+{fmtCompactCurrency(SURPLUS_SCALE_REF)}/mo or more</span>
               <span>$0/mo</span>
-              <span>Negative surplus</span>
+              <span>−{fmtCompactCurrency(SURPLUS_SCALE_REF)}/mo or less</span>
             </>
           ) : (
             <>
@@ -320,6 +345,18 @@ export function GridView() {
             </>
           )}
         </div>
+        {metric === 'surplus' && gridConfig.surplus_threshold > 0 && (
+          <div className="flex items-center gap-2 text-[11px] text-text-muted mt-1">
+            <span
+              className="inline-block w-4 h-1 rounded-sm"
+              style={{ backgroundColor: COLORS.amberText }}
+            />
+            <span>
+              underline = positive but below your{' '}
+              {fmtCurrency(gridConfig.surplus_threshold)}/mo target
+            </span>
+          </div>
+        )}
       </div>
       <p className="text-xs text-text-muted italic px-2 shrink-0">
         Click any cell for full breakdown. Income rows are household income;

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { computeGrid } from '../engine/gridEngine.ts';
 import { computeScenario } from '../engine/cashflowEngine.ts';
+import { computeHousingCosts } from '../engine/housingEngine.ts';
 import type { ScenarioInputs, GridConfig } from '../engine/types.ts';
 
 const BASE_INPUTS: ScenarioInputs = {
@@ -85,5 +86,34 @@ describe('computeGrid', () => {
     expect(grid.cells[2][0].surplus_monthly).toBeGreaterThan(
       grid.cells[0][0].surplus_monthly,
     );
+  });
+
+  it('break-even incomes align with prices and rise with price', () => {
+    expect(grid.break_even_incomes).toHaveLength(grid.prices.length);
+    for (let j = 1; j < grid.break_even_incomes.length; j++) {
+      expect(grid.break_even_incomes[j]).toBeGreaterThan(
+        grid.break_even_incomes[j - 1],
+      );
+    }
+  });
+
+  it('marginal housing cost per price step is constant (linear in price)', () => {
+    const cost = (price: number) =>
+      computeHousingCosts(
+        price,
+        BASE_INPUTS.down_payment_pct,
+        BASE_INPUTS.apr,
+        BASE_INPUTS.term_years,
+        BASE_INPUTS.property_tax_rate_annual,
+        BASE_INPUTS.insurance_rate_annual,
+        BASE_INPUTS.maintenance_rate_annual,
+        BASE_INPUTS.hoa_monthly,
+      ).housing_total_monthly;
+
+    const stepLow = cost(1_100_000) - cost(1_000_000);
+    const stepHigh = cost(1_500_000) - cost(1_400_000);
+    expect(stepLow).toBeCloseTo(stepHigh, 6);
+    // The UI computes the same delta directly from a price of one step
+    expect(cost(100_000)).toBeCloseTo(stepLow, 6);
   });
 });

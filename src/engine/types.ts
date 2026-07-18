@@ -128,6 +128,8 @@ export interface GridResult {
   incomes: number[];
   prices: number[];
   cells: GridCell[][];
+  /** Per price column: minimum household income where surplus >= 0 (Infinity if unreachable). */
+  break_even_incomes: number[];
 }
 
 export interface GridConfig {

@@ -2,6 +2,7 @@ import type { ScenarioInputs, GridCell, GridResult, GridConfig } from './types.t
 import { computeAllTaxes } from './taxEngine.ts';
 import { computeHousingCosts } from './housingEngine.ts';
 import { splitIncome } from './incomeSplit.ts';
+import { computeBreakEvenIncome } from './cashflowEngine.ts';
 
 /** Generate an array of values from min to max (inclusive) by step. */
 function range(min: number, max: number, step: number): number[] {
@@ -68,6 +69,11 @@ export function computeGrid(
     ),
   );
 
+  // Minimum viable household income per price column
+  const breakEvenIncomes = housingByPrice.map((housing) =>
+    computeBreakEvenIncome(baseInputs, housing.housing_total_monthly),
+  );
+
   // Combine into grid
   const cells: GridCell[][] = incomes.map((income, i) => {
     const tax = taxByIncome[i];
@@ -97,5 +103,5 @@ export function computeGrid(
     });
   });
 
-  return { incomes, prices, cells };
+  return { incomes, prices, cells, break_even_incomes: breakEvenIncomes };
 }

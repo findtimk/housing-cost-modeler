@@ -33,6 +33,15 @@ export function fmtRate(rate: number): string {
   return `${(rate * 100).toFixed(1)}%`;
 }
 
+/** Format a dollar amount compactly ($310K / $1.4M). */
+export function fmtCompactCurrency(amount: number): string {
+  if (amount >= 1_000_000) {
+    const millions = amount / 1_000_000;
+    return millions % 1 === 0 ? `$${millions}M` : `$${millions.toFixed(1)}M`;
+  }
+  return `$${Math.round(amount / 1000)}K`;
+}
+
 /** Format large number with commas. */
 export function fmtNumber(value: number): string {
   return new Intl.NumberFormat('en-US').format(Math.round(value));

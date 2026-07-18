@@ -1,13 +1,20 @@
 import { useMemo } from 'react';
 import { useAppContext } from '../../context/AppContext.tsx';
-import { computeScenario } from '../../engine/cashflowEngine.ts';
+import {
+  computeBreakEvenIncome,
+  computeScenario,
+} from '../../engine/cashflowEngine.ts';
 import { splitIncome } from '../../engine/incomeSplit.ts';
 import {
   computeExpenseBucketTotal,
   getActiveExpenseScenario,
   isCategoryExpenseMode,
 } from '../../engine/expenseBuilder.ts';
-import { fmtCurrency, fmtPercent } from '../shared/formatters.ts';
+import {
+  fmtCompactCurrency,
+  fmtCurrency,
+  fmtPercent,
+} from '../shared/formatters.ts';
 import {
   ArrowLeftIcon,
   CheckCircleIcon,
@@ -15,14 +22,6 @@ import {
   XCircleIcon,
   CalculatorIcon,
 } from '@heroicons/react/24/solid';
-
-function formatAbbreviatedAmount(amount: number): string {
-  if (amount >= 1_000_000) {
-    const millions = amount / 1_000_000;
-    return millions % 1 === 0 ? `$${millions}M` : `$${millions.toFixed(1)}M`;
-  }
-  return `$${Math.round(amount / 1000)}K`;
-}
 
 function VerdictBadge({ surplus, threshold }: { surplus: number; threshold: number }) {
   if (surplus < 0) {
@@ -44,7 +43,7 @@ function VerdictBadge({ surplus, threshold }: { surplus: number; threshold: numb
   return (
     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-teal-light border border-brand-teal/20 text-brand-teal-dark text-xs font-semibold mt-2">
       <CheckCircleIcon className="w-4 h-4" />
-      Meets your surplus target
+      Cash flow clears your target
     </span>
   );
 }
@@ -196,6 +195,12 @@ export function ScenarioView() {
 
   const result = useMemo(() => computeScenario(scenarioInputs), [scenarioInputs]);
 
+  const breakEvenIncome = useMemo(
+    () =>
+      computeBreakEvenIncome(scenarioInputs, result.housing.housing_total_monthly),
+    [scenarioInputs, result.housing.housing_total_monthly],
+  );
+
   if (!selectedCell) {
     return (
       <div className="flex items-center justify-center h-64 text-text-muted text-sm">
@@ -208,6 +213,13 @@ export function ScenarioView() {
   const threshold = gridConfig.surplus_threshold;
   const householdIncome =
     scenarioInputs.earner1_wages_annual + scenarioInputs.earner2_wages_annual;
+  // Matches the "Take-home Pay" line in the Cash Flow card below.
+  const takeHomeMonthly =
+    result.gross_monthly -
+    result.inputs.pre_tax_retirement_monthly -
+    result.tax.taxes_monthly;
+  const totalSpendMonthly =
+    result.living_expenses_monthly + result.housing.housing_total_monthly;
 
   // Determine accent colors based on values
   const surplusColor = surplus < 0 ? '#e11d48' : surplus < threshold ? '#d97706' : '#0d9488';
@@ -229,9 +241,24 @@ export function ScenarioView() {
         <div className="flex justify-between items-start">
           <div>
             <h2 className="text-lg font-bold text-brand-navy">
-              {formatAbbreviatedAmount(householdIncome)} income · {formatAbbreviatedAmount(scenarioInputs.home_price)} home
+              {fmtCompactCurrency(householdIncome)} income · {fmtCompactCurrency(scenarioInputs.home_price)} home
             </h2>
             <VerdictBadge surplus={surplus} threshold={threshold} />
+            {Number.isFinite(breakEvenIncome) && householdIncome > 0 && (
+              <p className="text-xs text-text-muted mt-1.5">
+                {breakEvenIncome <= householdIncome
+                  ? 'Works down to '
+                  : 'Needs at least '}
+                {fmtCompactCurrency(breakEvenIncome)} household income (
+                {breakEvenIncome <= householdIncome ? '−' : '+'}
+                {Math.abs(
+                  Math.round(
+                    ((breakEvenIncome - householdIncome) / householdIncome) * 100,
+                  ),
+                )}
+                % vs this scenario)
+              </p>
+            )}
           </div>
           <button
             onClick={toggleAudit}
@@ -248,8 +275,16 @@ export function ScenarioView() {
         <KPI
           label="Money Left Over"
           value={fmtCurrency(surplus)}
-          subtext="/month"
-          secondaryText="monthly surplus = gross − taxes − pre-tax retirement − after-tax savings − living expenses − housing total"
+          subtext={
+            surplus > 0 && takeHomeMonthly > 0
+              ? `/month · ${fmtPercent(surplus / takeHomeMonthly)} of take-home`
+              : '/month'
+          }
+          secondaryText={
+            surplus > 0 && totalSpendMonthly > 0
+              ? `≈ ${((surplus * 12) / totalSpendMonthly).toFixed(1)} months of expenses saved per year`
+              : undefined
+          }
           accentColor={surplusColor}
         />
         <KPI

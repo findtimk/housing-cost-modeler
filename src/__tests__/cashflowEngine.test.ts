@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { computeScenario } from '../engine/cashflowEngine.ts';
+import {
+  computeBreakEvenIncome,
+  computeScenario,
+} from '../engine/cashflowEngine.ts';
 import { splitIncome } from '../engine/incomeSplit.ts';
 import { createDefaultExpenseBuilder, syncLivingExpensesFromBuilder } from '../engine/expenseBuilder.ts';
 import { migrateInputs, DEFAULT_INPUTS } from '../components/InputPanel/defaults.ts';
@@ -124,6 +127,59 @@ describe('AC1 — Pre-tax vs after-tax behavior', () => {
     );
 
     expect(morePretax.tax.taxes_monthly).toBeLessThan(base.tax.taxes_monthly);
+  });
+});
+
+describe('computeBreakEvenIncome', () => {
+  /** Recompute a scenario at a given household income (split like the grid). */
+  function scenarioAtIncome(inputs: ScenarioInputs, income: number) {
+    const [earner1, earner2] = splitIncome(
+      income,
+      inputs.earner1_wages_annual,
+      inputs.earner2_wages_annual,
+    );
+    return computeScenario({
+      ...inputs,
+      earner1_wages_annual: earner1,
+      earner2_wages_annual: earner2,
+    });
+  }
+
+  it('surplus is >= 0 and small at the break-even income', () => {
+    const inputs = makeInputs();
+    const housing = computeScenario(inputs).housing.housing_total_monthly;
+    const breakEven = computeBreakEvenIncome(inputs, housing);
+
+    expect(Number.isFinite(breakEven)).toBe(true);
+    const surplus = scenarioAtIncome(inputs, breakEven).surplus_monthly;
+    expect(surplus).toBeGreaterThanOrEqual(0);
+    // $1,000 of annual income rounding is well under $200/mo of surplus
+    expect(surplus).toBeLessThan(200);
+  });
+
+  it('surplus is negative just below the break-even income', () => {
+    const inputs = makeInputs();
+    const housing = computeScenario(inputs).housing.housing_total_monthly;
+    const breakEven = computeBreakEvenIncome(inputs, housing);
+
+    const surplus = scenarioAtIncome(inputs, breakEven - 2_000).surplus_monthly;
+    expect(surplus).toBeLessThan(0);
+  });
+
+  it('returns 0 when there are no outflows to cover', () => {
+    const inputs = makeInputs({
+      pre_tax_retirement_monthly: 0,
+      after_tax_retirement_monthly: 0,
+      living_expenses_monthly: 0,
+    });
+    expect(computeBreakEvenIncome(inputs, 0)).toBe(0);
+  });
+
+  it('higher housing cost requires higher break-even income', () => {
+    const inputs = makeInputs();
+    const low = computeBreakEvenIncome(inputs, 5_000);
+    const high = computeBreakEvenIncome(inputs, 9_000);
+    expect(high).toBeGreaterThan(low);
   });
 });
 
